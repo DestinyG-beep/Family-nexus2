@@ -29,7 +29,7 @@ export default function ProfileSetupForm() {
         residence: residence.trim() || null,
       });
 
-      router.replace('/(tabs)');
+      router.replace('/');
     } catch (error) {
       Alert.alert('Profile update failed', error instanceof Error ? error.message : 'Please try again.');
     } finally {

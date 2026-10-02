@@ -28,7 +28,7 @@ export async function getActiveFamilyMembership(userId?: string) {
 
   const { data, error } = await client
     .from('family_members')
-    .select('*, families(*)')
+    .select('id, family_id, user_id, role, status, joined_at, families(id, name, member_limit, owner_id, created_by, created_at, updated_at)')
     .eq('user_id', targetUserId)
     .eq('status', 'ACTIVE')
     .maybeSingle();

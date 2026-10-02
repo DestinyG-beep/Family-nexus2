@@ -27,7 +27,7 @@ type AuthContextValue = {
   isLoading: boolean;
   isProfileComplete: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<'signed-in' | 'confirmation-required'>;
   updateProfile: (input: {
     name?: string;
     email?: string | null;
@@ -179,6 +179,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(error?.message ?? 'Unable to create account.');
     }
 
+    if (!data.session) {
+      setSession(null);
+      setProfile(null);
+      return 'confirmation-required';
+    }
+
     const nextProfile = await ensureProfileRecord(data.user.id, name, data.user.email ?? email);
     setSession({
       id: data.user.id,
@@ -186,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: nextProfile?.name ?? name,
     });
     setProfile(nextProfile);
+    return 'signed-in';
   };
 
   const updateProfile = async (input: {
@@ -253,7 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       profile,
       isLoading,
-      isProfileComplete: !!profile?.name && profile.name.trim().length > 0,
+      isProfileComplete: !!profile?.profile_completed && !!profile?.name && profile.name.trim().length > 0,
       signIn,
       signUp,
       updateProfile,

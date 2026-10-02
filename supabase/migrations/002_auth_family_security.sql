@@ -31,11 +31,11 @@ language sql
 security definer
 set search_path = public
 as $$
-  select exists (
+  select coalesce(p_user_id = auth.uid(), false) and exists (
     select 1
     from public.family_members fm
     where fm.family_id = p_family_id
-      and fm.user_id = p_user_id
+      and fm.user_id = auth.uid()
       and fm.status = 'ACTIVE'
   );
 $$;
@@ -44,7 +44,7 @@ create or replace function public.create_family(p_name text, p_password text, p_
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -55,11 +55,11 @@ begin
     raise exception 'Authentication required';
   end if;
 
-  if length(trim(p_name)) < 5 then
+  if p_name is null or length(trim(p_name)) < 5 then
     raise exception 'Family name must be at least 5 characters long';
   end if;
 
-  if length(trim(p_password)) < 8 then
+  if p_password is null or length(trim(p_password)) < 8 then
     raise exception 'Family password must be at least 8 characters long';
   end if;
 
@@ -117,22 +117,47 @@ begin
 end;
 $$;
 
-revoke all on public.profiles from public;
-revoke all on public.families from public;
-revoke all on public.family_members from public;
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+revoke all on function public.is_active_family_member(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.is_active_family_member(uuid, uuid) to authenticated;
+revoke all on function public.create_family(text, text, integer) from public, anon, authenticated;
+grant execute on function public.create_family(text, text, integer) to authenticated;
+
+revoke all on public.profiles from public, anon, authenticated;
+revoke all on public.families from public, anon, authenticated;
+revoke all on public.family_members from public, anon, authenticated;
 
 grant usage on schema public to authenticated;
 grant select, insert, update on public.profiles to authenticated;
-grant select, insert, update on public.families to authenticated;
-grant select, insert, update on public.family_members to authenticated;
-
--- Only active family members may read family rows, and password hashes remain hidden from normal queries.
-revoke select(password_hash) on public.families from authenticated;
-revoke update(password_hash) on public.families from authenticated;
+grant select (
+  id,
+  name,
+  member_limit,
+  default_background_media_id,
+  owner_id,
+  created_by,
+  created_at,
+  updated_at,
+  deleted_at
+) on public.families to authenticated;
+grant update (name, member_limit, default_background_media_id, updated_at)
+on public.families to authenticated;
+grant select on public.family_members to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.families enable row level security;
 alter table public.family_members enable row level security;
+
+drop policy if exists "profiles_owner_select" on public.profiles;
+drop policy if exists "profiles_owner_insert" on public.profiles;
+drop policy if exists "profiles_owner_update" on public.profiles;
+drop policy if exists "families_active_members_select" on public.families;
+drop policy if exists "families_owner_update" on public.families;
+drop policy if exists "family_members_active_family_select" on public.family_members;
+drop policy if exists "family_members_self_update" on public.family_members;
+drop policy if exists "family_members_no_client_insert" on public.family_members;
+drop policy if exists "family_members_no_client_update" on public.family_members;
+drop policy if exists "family_members_no_client_delete" on public.family_members;
 
 create policy "profiles_owner_select"
 on public.profiles
@@ -159,22 +184,22 @@ create policy "families_owner_update"
 on public.families
 for update
 using (owner_id = auth.uid())
-with check (owner_id = old.owner_id and created_by = old.created_by);
+with check (owner_id = auth.uid());
 
 create policy "family_members_active_family_select"
 on public.family_members
 for select
 using (public.is_active_family_member(family_id, auth.uid()));
 
-create policy "family_members_self_update"
-on public.family_members
-for update
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id and role = old.role);
-
 create policy "family_members_no_client_insert"
 on public.family_members
 for insert
+with check (false);
+
+create policy "family_members_no_client_update"
+on public.family_members
+for update
+using (false)
 with check (false);
 
 create policy "family_members_no_client_delete"

@@ -24,7 +24,10 @@ export default function AuthScreen() {
 
     try {
       if (mode === 'register') {
-        await signUp(name, email, password);
+        const result = await signUp(name, email, password);
+        if (result === 'confirmation-required') {
+          Alert.alert('Confirm your email', 'Your account was created. Confirm your email, then log in.');
+        }
       } else {
         await signIn(email, password);
       }
