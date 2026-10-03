@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { hasSupabaseConfig, requireSupabase, supabase } from '../lib/supabase';
 
@@ -83,13 +83,10 @@ async function ensureProfileRecord(userId: string, fallbackName?: string, email?
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !!supabase);
 
   const syncAuthState = async () => {
     if (!hasSupabaseConfig || !supabase) {
-      setSession(null);
-      setProfile(null);
-      setIsLoading(false);
       return;
     }
 
@@ -119,11 +116,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    void syncAuthState();
-
     if (!supabase) {
       return undefined;
     }
+
+    void Promise.resolve().then(syncAuthState);
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       if (!nextSession?.user) {
@@ -196,7 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return 'signed-in';
   };
 
-  const updateProfile = async (input: {
+  const updateProfile = useCallback(async (input: {
     name?: string;
     email?: string | null;
     phone_number?: string | null;
@@ -240,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return nextProfile;
-  };
+  }, [session, profile]);
 
   const signOut = async () => {
     if (!supabase) {
@@ -267,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updateProfile,
       signOut,
     }),
-    [session, profile, isLoading]
+    [session, profile, isLoading, updateProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

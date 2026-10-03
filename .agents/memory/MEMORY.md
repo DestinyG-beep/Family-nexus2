@@ -1,0 +1,1 @@
+- [Expo SDK 57 setup](expo-sdk-57-setup.md) — dependency resolution and web launch need environment-specific handling.

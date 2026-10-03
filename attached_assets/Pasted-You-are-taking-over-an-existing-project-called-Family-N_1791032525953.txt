@@ -1,0 +1,1073 @@
+You are taking over an existing project called **Family Nexus2**.
+
+The project was previously developed in VS Code using GitHub Copilot. Copilot credits are currently exhausted, so you are now responsible for continuing development from the EXISTING project state.
+
+## PROJECT LOCATION / ENVIRONMENT
+
+The project is a cross-platform Expo application intended for:
+
+- Web
+- Android
+
+The goal is ONE shared codebase.
+
+Current intended stack:
+
+- Expo
+- React Native
+- React Native Web
+- Expo Router
+- TypeScript
+- Supabase
+  - Auth
+  - PostgreSQL
+  - Row Level Security
+  - Storage
+  - Realtime where appropriate
+
+Do NOT replace this stack.
+
+Do NOT migrate the project to a completely different framework.
+
+---
+
+# VERY IMPORTANT: EXISTING WORK MUST BE PRESERVED
+
+Before changing anything:
+
+1. Inspect the entire existing project.
+2. Understand the current routing.
+3. Understand authentication.
+4. Understand Supabase integration.
+5. Understand the existing Family implementation.
+6. Read the existing SQL migrations.
+7. Inspect existing tables, RPCs, RLS policies, and Storage configuration.
+8. Inspect current screens/components/services.
+9. Identify what is already implemented before creating anything new.
+
+Do NOT recreate functionality that already works.
+
+Do NOT create duplicate tables/RPCs/components when an existing implementation can be extended.
+
+Do NOT replace working code just because you would structure it differently.
+
+Make incremental changes.
+
+---
+
+# CURRENT VERIFIED STATE
+
+The following is already implemented and tested.
+
+## Authentication
+
+Working:
+
+- Account creation
+- Login
+- Session restoration
+- Profile creation
+- Profile completion
+- Web authentication
+- Native session persistence
+
+Email confirmation is currently DISABLED for development/testing.
+
+Do NOT spend time configuring:
+
+- Resend
+- SMTP
+- Auth Hooks
+- Email confirmation
+
+unless explicitly required later.
+
+Do not enable email confirmation.
+
+---
+
+# FAMILY SYSTEM
+
+Family is the most important completed area and must be PRESERVED.
+
+The application supports:
+
+- Family creation
+- Family joining
+- Family member limits
+- Family invitations
+- Existing-user invitation flow
+- Family Owner role
+- Member role
+- Family Home
+- Family details
+- Member directory
+- Invitation password
+- RLS/security
+- Human-friendly Family UI
+
+The creator internally receives the existing SUPERADMIN role but the UI displays:
+
+`Family Owner`
+
+Normal users display:
+
+`Member`
+
+Do not expose raw:
+
+`SUPERADMIN`
+
+to normal users.
+
+---
+
+# FAMILY DATABASE MIGRATIONS
+
+Existing migrations include:
+
+- `001_initial_schema.sql`
+- `002_auth_family_security.sql`
+- `004_family_directory_invitation_password.sql`
+
+Migration 004 had a temporary `*** End Patch` artifact, which was removed.
+
+The CURRENT cleaned version of:
+
+`004_family_directory_invitation_password.sql`
+
+was successfully executed against the LIVE Supabase project.
+
+Supabase returned:
+
+`Success. No rows returned`
+
+Therefore migration 004 is deployed.
+
+Do NOT re-run old copies of migration 004.
+
+Do NOT modify 001 or 002 unless there is a demonstrated security/functional necessity.
+
+---
+
+# FAMILY INVITATION FLOW
+
+This was manually tested and confirmed working.
+
+The flow:
+
+Invitation link
+→ authentication
+→ invitation returns
+→ Family password
+→ join
+
+works.
+
+A non-member test account was used.
+
+The invitation returned successfully after authentication.
+
+DO NOT break this flow.
+
+The client expects the password-gated invitation RPC:
+
+`join_family_with_invitation_password`
+
+Migration 004 provides the server-side password enforcement.
+
+---
+
+# FAMILY UX REQUIREMENTS
+
+The Family Home should:
+
+### No family
+
+Show:
+
+- Create Family
+- Join Family
+
+Do not force Family creation during account registration.
+
+### Has family
+
+Show:
+
+- Family image/icon
+- Family name
+- Member count
+- Maximum member count
+- Human-readable role
+- Open Family
+
+Example:
+
+`Martins Family`
+`4 / 4 members`
+`Family Owner`
+
+---
+
+# FAMILY FORM REQUIREMENTS
+
+Create Family:
+
+- Family name
+- Minimum 5 characters
+- Family password
+- Minimum 8 characters
+- Maximum members
+- Real editable value/selector
+
+Placeholders must be placeholders.
+
+Do NOT initialize form state with examples.
+
+Examples such as:
+
+`Martins Family`
+`12`
+
+must not be submitted as actual values unless they are intentionally selected by the user.
+
+Info `(i)` controls exist for ambiguous fields.
+
+Preserve this behavior.
+
+---
+
+# FAMILY SECURITY REQUIREMENTS
+
+Never expose:
+
+- password_hash
+- service-role keys
+- secret Supabase credentials
+- internal invitation secrets
+
+Client UI checks are NOT security boundaries.
+
+Server/RPC/RLS must enforce:
+
+- Membership
+- Capacity
+- Invitation password
+- Role assignment
+- Family access
+
+Normal users must not be able to make themselves Family Owner/SUPERADMIN.
+
+Non-members must not access protected family data.
+
+Anonymous users must not access protected family data.
+
+---
+
+# FAMILY CURRENT STATUS
+
+Family is essentially complete.
+
+The last manual verification already confirmed:
+
+- Existing-user invitation returns correctly after authentication.
+
+There may still be some final checks such as:
+
+- Wrong invitation password
+- Empty invitation password
+- Member-directory access
+- Capacity bypass
+- Non-member security
+- Android runtime verification
+
+If these can be safely tested, do so.
+
+Do NOT break the existing Family implementation while doing this.
+
+---
+
+# CURRENT GOAL
+
+We now need to build out the rest of the Family Nexus2 MVP.
+
+Prioritize REAL functionality over cosmetic polish.
+
+Build in this order:
+
+1. Finish Family verification if necessary
+2. Media MVP
+3. Calendar MVP
+4. Chat MVP
+5. Family Tree MVP
+6. Profile/settings/admin polish
+7. Final cross-platform verification
+
+Do not spend excessive time polishing one screen while major functionality is missing.
+
+---
+
+# PHASE 1 — FINAL FAMILY CHECK
+
+First inspect the existing Family implementation.
+
+If automated/local verification can establish the following, verify them:
+
+- Correct invitation password succeeds.
+- Wrong invitation password fails.
+- Empty invitation password fails.
+- Duplicate membership is prevented.
+- Family capacity is enforced.
+- Member directory works.
+- Non-members cannot access protected member directory.
+- Anonymous access is blocked.
+- Role escalation is blocked.
+- `password_hash` remains protected.
+
+Do not invent test results.
+
+If a test requires a real second user/browser interaction that cannot be performed automatically, document it as requiring manual verification.
+
+Do not claim PASS without evidence.
+
+---
+
+# PHASE 2 — MEDIA MVP
+
+This is the next major feature.
+
+Use the EXISTING `media` database table if it is already present.
+
+Do not create another media table unless the existing schema genuinely cannot support the feature.
+
+Use Supabase PRIVATE Storage.
+
+Never make family media publicly accessible.
+
+Recommended object path:
+
+`families/{family_id}/media/{media_id}`
+
+Use the existing database structure where possible.
+
+---
+
+## MEDIA MVP REQUIREMENTS
+
+Implement REAL uploads.
+
+Initial supported types:
+
+- Images
+- Videos
+
+Do NOT fake uploads.
+
+A successful upload must mean:
+
+1. File selected.
+2. User is authenticated.
+3. User belongs to the family.
+4. User has permission to upload.
+5. Storage object uploaded successfully.
+6. Database media row created successfully.
+7. UI refreshes from real database state.
+
+Do not show "uploaded successfully" if Storage or database insertion failed.
+
+---
+
+# MEDIA GALLERY
+
+Create:
+
+`Media`
+
+with tabs/filters:
+
+- Images
+- Videos
+
+Show:
+
+- Thumbnail/preview
+- Uploader
+- Date/time
+- Basic metadata where useful
+
+Use signed URLs for private Storage access.
+
+Do not expose permanent public URLs.
+
+---
+
+# MEDIA DETAIL
+
+Selecting media should open a detail view.
+
+Support where practical:
+
+- View
+- Like/unlike
+- Pin/unpin
+- Download/share where platform supports it
+- Delete
+
+---
+
+# MEDIA PERMISSIONS
+
+A normal member may:
+
+- Upload
+- View family media
+- Like
+- Pin according to existing permission model
+- Delete their own media
+
+Administrators/Family Owner may delete media according to the existing permission model.
+
+Do not allow ordinary members to delete another member's media unless an existing permission explicitly allows it.
+
+Enforce this server-side.
+
+---
+
+# MEDIA SECURITY
+
+Verify:
+
+- Non-members cannot access family media.
+- Anonymous users cannot access family media.
+- Storage is private.
+- Signed URLs are required.
+- Users cannot manipulate a media ID to access another family's media.
+- Users cannot delete another member's media without authorization.
+- Storage policies and database RLS agree with the application permission model.
+
+Never use service-role credentials in client code.
+
+---
+
+# MEDIA UI
+
+Add:
+
+- Empty state
+- Upload button
+- Upload progress/loading
+- Error handling
+- Gallery
+- Media detail
+- Delete confirmation
+- Like state
+- Pin state
+
+Make it usable on:
+
+- Web
+- Android
+
+Use Expo-compatible APIs.
+
+---
+
+# MEDIA TESTS
+
+Verify:
+
+- Image upload
+- Image Storage object
+- Image database row
+- Image gallery display
+- Signed URL access
+- Like/unlike
+- Pin/unpin
+- Delete own media
+- Unauthorized delete blocked
+- Non-member access blocked
+
+Video upload/display should be implemented if the current Expo/Web environment supports it reliably.
+
+If platform-specific video functionality cannot be completed safely, implement the supported portion and clearly document the limitation.
+
+---
+
+# PHASE 3 — CALENDAR MVP
+
+After Media is functioning, implement Calendar.
+
+Use the existing `events` table.
+
+Do not create duplicate event tables.
+
+Users should be able to:
+
+- View family events
+- Create their own event
+- Edit their own event
+- Delete their own event
+- View event details
+
+Event fields:
+
+- Title
+- Description if supported
+- Date
+- Optional time
+- Optional location
+- Optional map/link
+- Creator
+- Family
+
+Family members should only see events belonging to their family.
+
+Users should not be able to modify another user's event unless existing permissions explicitly allow it.
+
+---
+
+# CALENDAR UI
+
+Create:
+
+- Calendar/list view
+- Event details
+- Create Event
+- Edit Event
+- Delete confirmation
+- Empty state
+- Loading state
+- Error state
+
+Make the date/time interface usable on Web and Android.
+
+---
+
+# CALENDAR SECURITY
+
+Enforce family membership server-side/RLS.
+
+Do not trust:
+
+- family_id
+- user_id
+- creator_id
+
+from the client.
+
+The backend/database must determine the authenticated user.
+
+---
+
+# PHASE 4 — CHAT MVP
+
+After Calendar, implement the initial Chat system.
+
+Use the existing:
+
+- `conversations`
+- `conversation_members`
+- `messages`
+- `message_attachments`
+
+tables if they already exist.
+
+Do not redesign the schema unnecessarily.
+
+Initial MVP:
+
+## Family group chat
+
+Every family should have access to an appropriate family conversation if the existing design supports it.
+
+Users can:
+
+- View messages
+- Send text messages
+- Receive new messages
+- Delete their own messages if supported by the schema
+- Pin messages if supported
+
+Use Supabase Realtime for live message updates if the existing project structure supports it.
+
+---
+
+# CHAT ATTACHMENTS
+
+If practical within the existing architecture, support:
+
+- Images
+- Videos
+- Audio/voice
+- Documents
+
+But prioritize:
+
+1. Text
+2. Images
+
+Do not spend excessive time implementing every attachment type before basic chat works.
+
+Use private Storage for attachments.
+
+---
+
+# CHAT SECURITY
+
+Verify:
+
+- Only conversation members can read messages.
+- Only authorized users can send messages.
+- Users cannot inject themselves into conversations through client manipulation.
+- Family chat cannot be accessed by non-members.
+- Attachments cannot bypass family/conversation authorization.
+
+---
+
+# PHASE 5 — FAMILY TREE MVP
+
+After Chat, implement the first usable Family Tree version.
+
+Use the existing family tree tables.
+
+Do not attempt to create an extremely sophisticated genealogy engine.
+
+Initial MVP:
+
+- People
+- Relationships
+- Parent/child
+- Spouse/partner where schema supports it
+- Basic tree visualization
+- Add person
+- Edit person
+- Remove relationship/person according to permissions
+
+Only Family Owner/Admin should modify the tree if that is what the existing permission design specifies.
+
+Normal members can view.
+
+---
+
+# FAMILY TREE UI
+
+Prioritize a functional cross-platform tree.
+
+Web can have a richer visualization if necessary, but do not create a completely separate architecture for Android.
+
+At minimum:
+
+- Family members represented as nodes/cards
+- Relationship lines or clear relationship structure
+- Zoom/scroll if practical
+- Person details
+
+If a sophisticated visual tree library is incompatible with Expo Web/Android, implement a simpler reliable tree rather than blocking the MVP.
+
+---
+
+# PHASE 6 — PROFILE
+
+Improve Profile using the existing `profiles` table.
+
+Fields:
+
+- Name — required
+- Email
+- Phone
+- Residence
+- Avatar
+- Profile completion status
+
+Incomplete profile should have the existing red-dot indicator.
+
+Avatar should use private/appropriate Storage handling.
+
+Do not expose unnecessary personal information to other families.
+
+---
+
+# PHASE 7 — SETTINGS
+
+Implement/finish Settings using the existing architecture.
+
+Include appropriate:
+
+- Account settings
+- Family settings where authorized
+- Appearance/background
+- Permissions where already designed
+- Logout
+
+Do not expose technical database settings.
+
+---
+
+# FAMILY BACKGROUND/THEME
+
+Preserve the intended precedence:
+
+1. User custom background
+2. Family default background
+3. System default
+
+If the existing schema already supports:
+
+`family_member_settings`
+
+use it.
+
+Do not create duplicate preference tables.
+
+---
+
+# ADMIN FUNCTIONALITY
+
+Do not attempt to implement every admin feature before the main MVP works.
+
+Prioritize:
+
+- View members
+- Role visibility
+- Family settings
+- Member limit
+- Basic member management
+- Permission-aware UI
+
+Any sensitive action must be protected by server-side authorization.
+
+---
+
+# MULTI-FAMILY
+
+Inspect the existing implementation before changing anything.
+
+The project may support multiple family memberships.
+
+If it already does, preserve it.
+
+If the current schema intentionally supports one family per user, do not silently redesign the database.
+
+Do not introduce a multi-family migration merely for convenience.
+
+---
+
+# GENERAL SECURITY RULES
+
+These are NON-NEGOTIABLE.
+
+Never put:
+
+- Supabase service-role key
+- secret API key
+- database password
+
+into:
+
+- Expo public environment variables
+- React Native code
+- Web bundles
+- Git commits
+
+Client environment variables must remain appropriate for public/client use.
+
+RLS must remain enabled on application tables.
+
+Never rely on UI checks as the security boundary.
+
+For sensitive operations use:
+
+- RLS
+- secure RPCs
+- server-side validation
+- Storage policies
+
+---
+
+# GENERAL UI RULES
+
+Use ordinary user language.
+
+Do not expose implementation terminology such as:
+
+- SUPERADMIN
+- family_member
+- member_limit
+- password_hash
+- RPC
+- RLS
+- database ID
+
+Use:
+
+- Family Owner
+- Administrator
+- Member
+- Maximum members
+- Family password
+
+Keep forms clear.
+
+Examples belong in placeholders, not values.
+
+Use loading/error/empty states consistently.
+
+---
+
+# CROSS-PLATFORM REQUIREMENT
+
+Everything should work from the shared Expo codebase.
+
+Target:
+
+- Web
+- Android
+
+Avoid browser-only APIs unless properly guarded.
+
+Avoid native-only APIs unless properly guarded.
+
+Use Expo/React Native compatible components.
+
+---
+
+# CODE QUALITY
+
+Before adding new dependencies:
+
+1. Check whether an existing dependency can solve the problem.
+2. Prefer the current project architecture.
+3. Avoid unnecessary libraries.
+
+Do not rewrite the project to match personal preferences.
+
+Keep components reasonably modular.
+
+Avoid giant single-file implementations when a feature naturally requires multiple components/services.
+
+---
+
+# DATABASE MIGRATIONS
+
+If a schema change is genuinely required:
+
+Create a NEW migration.
+
+Example:
+
+`005_media_mvp.sql`
+
+then:
+
+`006_calendar_mvp.sql`
+
+etc.
+
+NEVER modify already-applied migrations 001, 002, or 004.
+
+Never ask the database to silently drift from the migration history.
+
+Each migration must:
+
+- Be valid PostgreSQL
+- Be reviewed before execution
+- Preserve RLS
+- Avoid destructive changes unless absolutely necessary
+
+---
+
+# ENVIRONMENT
+
+Inspect the existing environment configuration.
+
+The app currently uses Expo public variables such as:
+
+`EXPO_PUBLIC_SUPABASE_URL`
+
+and:
+
+`EXPO_PUBLIC_SUPABASE_ANON_KEY`
+
+Do NOT change these to Vite variables.
+
+Do NOT expose service-role keys.
+
+Do NOT create fake environment values.
+
+If Replit needs environment variables, use Replit Secrets appropriately.
+
+---
+
+# TESTING AFTER EACH MAJOR PHASE
+
+After Family verification:
+
+```bash
+npx tsc --noEmit
+```
+
+and:
+
+```bash
+CI=1 npx expo export --platform web
+```
+
+After Media:
+
+- TypeScript
+- Web export
+- Media functional tests
+
+After Calendar:
+
+- TypeScript
+- Web export
+- Event tests
+
+After Chat:
+
+- TypeScript
+- Web export
+- Message/realtime tests
+
+After Family Tree:
+
+- TypeScript
+- Web export
+- Tree tests
+
+Do not wait until the very end to discover that the project no longer compiles.
+
+---
+
+# IMPORTANT: DO NOT CLAIM TESTS PASSED WITHOUT TESTING
+
+Never say:
+
+"PASS"
+
+unless you actually verified it.
+
+If something cannot be tested in Replit, state:
+
+`NOT VERIFIED — requires manual Web/Android testing`
+
+This is especially important for:
+
+- Android
+- Storage uploads
+- Realtime
+- Authentication
+- invitation flows
+- device-specific behavior
+
+---
+
+# PRIORITY ORDER
+
+If Replit's execution/time/credit limits become a problem, prioritize in exactly this order:
+
+### Priority 1
+Preserve and verify Family.
+
+### Priority 2
+Complete Media MVP.
+
+### Priority 3
+Complete Calendar MVP.
+
+### Priority 4
+Complete basic Family Chat.
+
+### Priority 5
+Complete basic Family Tree.
+
+### Priority 6
+Profile/Settings/Admin polish.
+
+Do NOT spend most of the available execution budget on visual polish.
+
+A functional MVP is more important than perfect styling.
+
+---
+
+# WORKING STYLE
+
+Before making major changes:
+
+- inspect existing implementation
+- reuse existing tables
+- reuse existing services
+- reuse existing components
+- reuse existing permissions
+- reuse existing RLS
+
+When implementing a feature:
+
+1. Database/schema if needed
+2. Secure backend/RPC/RLS
+3. Service layer
+4. UI
+5. Loading/error states
+6. Test
+7. TypeScript
+8. Web build
+
+Do not build a UI that depends on fake data.
+
+Do not use hard-coded fake success states.
+
+Do not silently swallow backend failures.
+
+---
+
+# START NOW
+
+Start by inspecting the existing Family Nexus2 project.
+
+Then:
+
+1. Verify the current Family implementation.
+2. Confirm migration 004 is represented correctly in the codebase.
+3. Run TypeScript.
+4. Run the Web export.
+5. Fix any blocking issues.
+6. Perform any remaining Family verification that can genuinely be performed.
+7. Begin Media MVP.
+8. Build as much of Media MVP as possible.
+9. Continue to Calendar if Media reaches a genuinely usable state.
+10. Continue to Chat if Calendar reaches a genuinely usable state.
+11. Continue to Family Tree if Chat reaches a genuinely usable state.
+
+Do not stop after merely creating placeholder screens.
+
+Build real functionality backed by Supabase.
+
+At the end of each major phase, provide a concise status report:
+
+## Completed
+What actually works.
+
+## Verified
+What was actually tested.
+
+## Not Verified
+What requires manual/device testing.
+
+## Remaining
+What still needs implementation.
+
+## Files Changed
+List important files.
+
+## Database Changes
+List migrations created/applied.
+
+## Build
+- TypeScript: PASS/FAIL
+- Web export: PASS/FAIL
+
+Most importantly:
+
+**Continue from the existing implementation. Do not rebuild Family. Do not create fake data. Do not weaken security. Build the remaining MVP systematically, with Media as the immediate next major feature.**
