@@ -70,10 +70,11 @@ export default function FamilyCreationForm() {
           <FieldHeading
             label="Family name"
             title="Family name"
-            message="Choose a name that your family members will recognize."
+            message="This is the name family members will see. Choose one they will recognize."
           />
           <TextInput
             style={styles.input}
+            accessibilityLabel="Family name"
             placeholder="The Martins"
             placeholderTextColor="#8a9691"
             value={name}
@@ -90,6 +91,7 @@ export default function FamilyCreationForm() {
           />
           <TextInput
             style={styles.input}
+            accessibilityLabel="Family password"
             placeholder="Enter a private family password"
             placeholderTextColor="#8a9691"
             value={password}
@@ -102,17 +104,17 @@ export default function FamilyCreationForm() {
           <FieldHeading
             label="Maximum members"
             title="Maximum members"
-            message="This is the maximum number of people who can belong to this family. Reaching this limit prevents new members from joining, but does not remove existing members."
+            message="This limits how many people can belong to the family. Lowering the limit does not remove existing members. New people cannot join once the limit is reached."
           />
           <TextInput
             style={styles.input}
             value={memberLimit}
+            accessibilityLabel="Maximum members"
             onChangeText={setMemberLimit}
             keyboardType="number-pad"
             returnKeyType="done"
-            accessibilityLabel="Maximum members"
           />
-          <Text style={styles.fieldHint}>Maximum family size. The starting value of 12 can be changed.</Text>
+          <Text style={styles.fieldHint}>Starting maximum: 12 people. Change this value as needed; current members will not be removed if you lower it.</Text>
 
           {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
 

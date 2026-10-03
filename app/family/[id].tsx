@@ -7,7 +7,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 
 import InfoButton from '../../src/components/InfoButton';
 import { useAuth } from '../../src/context/AuthContext';
-import { ActiveFamilyMembership, createFamilyInvitation, getActiveFamilyMemberships } from '../../src/lib/familyService';
+import { ActiveFamilyMembership, FamilyMemberSummary, createFamilyInvitation, getActiveFamilyMemberships, getFamilyMemberDirectory } from '../../src/lib/familyService';
 
 function roleLabel(role: string) {
   if (role === 'SUPERADMIN') return 'Family Owner';
@@ -20,6 +20,8 @@ export default function FamilyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const [membership, setMembership] = useState<ActiveFamilyMembership | null>(null);
+  const [members, setMembers] = useState<FamilyMemberSummary[]>([]);
+  const [membersUnavailable, setMembersUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [inviteUrl, setInviteUrl] = useState('');
@@ -43,7 +45,17 @@ export default function FamilyDetailScreen() {
           const current = memberships.find((item) => item.family_id === id) ?? null;
           if (active) {
             setMembership(current);
-            if (!current) setError('You do not have access to this family space.');
+            if (!current) {
+              setError('You do not have access to this family space.');
+            } else {
+              try {
+                setMembers(await getFamilyMemberDirectory(current.family_id));
+                setMembersUnavailable(false);
+              } catch {
+                setMembers([]);
+                setMembersUnavailable(true);
+              }
+            }
           }
         } catch (loadError) {
           console.warn('Unable to load family details', loadError instanceof Error ? loadError.message : 'unknown error');
@@ -56,7 +68,7 @@ export default function FamilyDetailScreen() {
       return () => {
         active = false;
       };
-    }, [id, session?.id])
+    }, [id, session])
   );
 
   const makeInvitation = async () => {
@@ -131,11 +143,31 @@ export default function FamilyDetailScreen() {
         <InfoButton title="Family members" message="Current members and maximum family size. Reaching the maximum prevents new people from joining, but never removes existing members." />
       </View>
 
+      <View style={styles.directoryPanel}>
+        <Text style={styles.directoryTitle}>Family members</Text>
+        {membersUnavailable ? (
+          <Text style={styles.body}>Member details are temporarily unavailable.</Text>
+        ) : members.length === 0 ? (
+          <Text style={styles.body}>No active members are listed yet.</Text>
+        ) : (
+          members.map((member, index) => (
+            <View key={`${member.member_name}-${index}`} style={styles.memberRow}>
+              <View style={styles.memberAvatar}><Feather name="user" size={18} color="#176b63" /></View>
+              <Text style={styles.memberName}>{member.member_name}</Text>
+              <Text style={styles.memberRole}>{roleLabel(member.role)}</Text>
+            </View>
+          ))
+        )}
+      </View>
+
       {canInvite ? (
         <View style={styles.invitePanel}>
           <View style={styles.inviteIcon}><Feather name="user-plus" size={22} color="#176b63" /></View>
           <Text style={styles.inviteTitle}>Invite family members</Text>
-          <Text style={styles.body}>Create a private link that lets one person join this family. The link expires after seven days.</Text>
+          <View style={styles.inviteHeading}>
+            <Text style={styles.body}>Create a private link. The link expires after seven days.</Text>
+            <InfoButton title="Invitation link" message="Anyone with this link can open the invitation and request to join. They must sign in and enter the family password. Each link can be used once." />
+          </View>
           {inviteUrl ? (
             <>
               <Text selectable accessibilityLabel="Invitation link" style={styles.inviteLink}>{inviteUrl}</Text>
@@ -167,12 +199,19 @@ const styles = StyleSheet.create({
   title: { color: '#102c2a', fontSize: 28, fontWeight: '700', textAlign: 'center' },
   role: { color: '#64746f', fontSize: 14, marginTop: 7 },
   memberPanel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 17, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd' },
+  directoryPanel: { padding: 17, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd', gap: 10 },
+  directoryTitle: { color: '#102c2a', fontSize: 17, fontWeight: '700', marginBottom: 2 },
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 46, borderTopWidth: 1, borderTopColor: '#e7ede8', paddingTop: 9 },
+  memberAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#e4f0e8', alignItems: 'center', justifyContent: 'center' },
+  memberName: { flex: 1, color: '#203a36', fontWeight: '600', fontSize: 14 },
+  memberRole: { color: '#64746f', fontSize: 13 },
   label: { color: '#64746f', fontSize: 13 },
   count: { color: '#102c2a', fontSize: 17, fontWeight: '700', marginTop: 5 },
   invitePanel: { padding: 20, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd', gap: 10 },
   inviteIcon: { width: 42, height: 42, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e4f0e8' },
   inviteTitle: { color: '#102c2a', fontSize: 19, fontWeight: '700' },
   body: { color: '#53645f', fontSize: 14, lineHeight: 21 },
+  inviteHeading: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   inviteLink: { color: '#176b63', fontSize: 13, lineHeight: 20, padding: 11, borderRadius: 6, backgroundColor: '#f1f6f1' },
   primaryButton: { minHeight: 48, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#176b63', marginTop: 5 },
   primaryText: { color: '#ffffff', fontWeight: '700' },

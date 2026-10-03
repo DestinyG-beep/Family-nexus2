@@ -17,7 +17,7 @@ export type ActiveFamilyMembership = {
 };
 
 export type FamilyOperationResult = {
-  status: 'joined' | 'already_member' | 'restricted' | 'family_full' | 'invalid_credentials' | 'invalid_invitation' | 'invitation_expired' | 'invitation_exhausted';
+  status: 'joined' | 'already_member' | 'restricted' | 'family_full' | 'invalid_credentials' | 'invalid_invitation' | 'invalid_password' | 'invitation_expired' | 'invitation_exhausted';
   family_id?: string;
   family_name?: string;
   role?: 'MEMBER';
@@ -28,6 +28,11 @@ export type FamilyOperationResult = {
 export type FamilyInvitationPreview = {
   status: 'valid' | 'already_member' | 'invalid' | 'expired' | 'revoked' | 'exhausted';
   family_name?: string;
+};
+
+export type FamilyMemberSummary = {
+  member_name: string;
+  role: string;
 };
 
 export async function getActiveFamilyMemberships(userId?: string): Promise<ActiveFamilyMembership[]> {
@@ -125,11 +130,17 @@ export async function getFamilyInvitation(token: string) {
   return data as FamilyInvitationPreview;
 }
 
-export async function joinFamilyWithInvitation(token: string) {
-  const { data, error } = await requireSupabase().rpc('join_family_with_invitation', { p_token: token });
+export async function joinFamilyWithInvitation(token: string, password: string) {
+  const { data, error } = await requireSupabase().rpc('join_family_with_invitation_password', {
+    p_token: token,
+    p_password: password,
+  });
 
   if (error) {
     console.warn('Invitation join failed', { code: error.code });
+    if (error.code === 'PGRST202') {
+      throw new Error('Invitation joining is not available yet. Ask an administrator to finish setting it up.');
+    }
     throw new Error('We could not complete this invitation. Try again later.');
   }
 
@@ -155,6 +166,17 @@ export async function createFamilyInvitation(familyId: string) {
   }
 
   return data as string;
+}
+
+export async function getFamilyMemberDirectory(familyId: string) {
+  const { data, error } = await requireSupabase().rpc('get_family_member_directory', { p_family_id: familyId });
+
+  if (error) {
+    console.warn('Family member list failed', { code: error.code });
+    throw new Error('Family member details are temporarily unavailable.');
+  }
+
+  return (data ?? []) as FamilyMemberSummary[];
 }
 
 export async function getFamily(familyId: string) {

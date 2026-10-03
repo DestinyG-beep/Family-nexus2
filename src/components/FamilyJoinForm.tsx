@@ -72,6 +72,7 @@ export default function FamilyJoinForm() {
           </View>
           <TextInput
             style={styles.input}
+            accessibilityLabel="Family name"
             placeholder="The Martins"
             placeholderTextColor="#8a9691"
             value={familyName}
@@ -82,10 +83,11 @@ export default function FamilyJoinForm() {
 
           <View style={styles.fieldHeading}>
             <Text style={styles.label}>Family password</Text>
-            <InfoButton title="Family password" message="The family owner or administrator shares this password with trusted people. It is verified securely by the server and is never returned to the app. An invitation link can also authorize joining without this password." />
+            <InfoButton title="Family password" message="The family owner or administrator shares this password with trusted people. It is verified securely by the server and is never returned to the app. Invitation links also require this password to finish joining." />
           </View>
           <TextInput
             style={styles.input}
+            accessibilityLabel="Family password"
             placeholder="Enter the family password"
             placeholderTextColor="#8a9691"
             value={password}

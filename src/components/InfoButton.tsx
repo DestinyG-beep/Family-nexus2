@@ -22,15 +22,21 @@ export default function InfoButton({ title, message }: InfoButtonProps) {
         <Feather name="info" size={17} color="#176b63" />
       </Pressable>
       <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setVisible(false)}>
-          <Pressable style={styles.dialog} onPress={(event) => event.stopPropagation()}>
+        <View style={styles.backdrop}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close information dialog"
+            onPress={() => setVisible(false)}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.dialog}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.message}>{message}</Text>
             <Pressable accessibilityRole="button" onPress={() => setVisible(false)} style={styles.closeButton}>
               <Text style={styles.closeText}>Got it</Text>
             </Pressable>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </>
   );

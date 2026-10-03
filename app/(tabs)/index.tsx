@@ -40,7 +40,10 @@ export default function HomeScreen() {
           const result = await getActiveFamilyMemberships(session.id);
           if (active) setMemberships(result);
         } catch (loadError) {
-          console.warn('Unable to load family spaces', loadError instanceof Error ? loadError.message : 'unknown error');
+          console.warn('Unable to load family spaces', {
+            retryCount: refreshKey,
+            error: loadError instanceof Error ? loadError.message : 'unknown error',
+          });
           if (active) setError('Your family spaces could not be loaded. Check your connection and try again.');
         } finally {
           if (active) setLoading(false);
@@ -51,7 +54,7 @@ export default function HomeScreen() {
       return () => {
         active = false;
       };
-    }, [refreshKey, session?.id])
+    }, [refreshKey, session])
   );
 
   const goTo = (path: '/create-family' | '/join-family') => {
