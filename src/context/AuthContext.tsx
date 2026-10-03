@@ -27,7 +27,7 @@ type AuthContextValue = {
   isLoading: boolean;
   isProfileComplete: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<'signed-in' | 'confirmation-required'>;
+  signUp: (name: string, email: string, password: string, emailRedirectTo?: string) => Promise<'signed-in' | 'confirmation-required'>;
   updateProfile: (input: {
     name?: string;
     email?: string | null;
@@ -165,13 +165,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(nextProfile);
   };
 
-  const signUp = async (name: string, email: string, password: string) => {
+  const signUp = async (name: string, email: string, password: string, emailRedirectTo?: string) => {
     const client = requireSupabase();
     const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
         data: { name },
+        ...(emailRedirectTo ? { emailRedirectTo } : {}),
       },
     });
 

@@ -20,7 +20,7 @@ export const supabase = hasSupabaseConfig
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: Platform.OS === 'web',
         ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }),
       },
     })

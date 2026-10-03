@@ -4,49 +4,48 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import InfoButton from './InfoButton';
-import { createFamily } from '../lib/familyService';
+import { joinFamilyByCredentials } from '../lib/familyService';
 
-function FieldHeading({ label, title, message }: { label: string; title: string; message: string }) {
-  return (
-    <View style={styles.fieldHeading}>
-      <Text style={styles.label}>{label}</Text>
-      <InfoButton title={title} message={message} />
-    </View>
-  );
-}
-
-export default function FamilyCreationForm() {
+export default function FamilyJoinForm() {
   const router = useRouter();
-  const [name, setName] = useState('');
+  const [familyName, setFamilyName] = useState('');
   const [password, setPassword] = useState('');
-  const [memberLimit, setMemberLimit] = useState('12');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleCreate = async () => {
-    if (name.trim().length < 5) {
-      setError('Use a family name with at least 5 characters.');
+  const join = async () => {
+    if (familyName.trim().length < 5) {
+      setError('Enter the family name. It must be at least 5 characters.');
       return;
     }
-    if (password.trim().length < 8) {
-      setError('Use a family password with at least 8 characters.');
-      return;
-    }
-
-    const parsedLimit = Number(memberLimit);
-    if (!Number.isInteger(parsedLimit) || parsedLimit <= 0) {
-      setError('Maximum members must be a positive whole number.');
+    if (password.length < 8) {
+      setError('Enter a family password with at least 8 characters.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      await createFamily({ name: name.trim(), password: password.trim(), memberLimit: parsedLimit });
-      router.replace({ pathname: '/(tabs)', params: { familyCreated: '1' } });
-    } catch (createError) {
-      console.warn('Family creation form failed', createError instanceof Error ? createError.message : 'unknown error');
-      setError(createError instanceof Error ? createError.message : 'We could not create the family. Try again.');
+      const result = await joinFamilyByCredentials(familyName.trim(), password);
+      switch (result.status) {
+        case 'joined':
+          router.replace({ pathname: '/(tabs)', params: { familyJoined: '1' } });
+          return;
+        case 'already_member':
+          setError('You already belong to this family.');
+          return;
+        case 'family_full':
+          setError('This family has reached its maximum size and cannot accept new members.');
+          return;
+        case 'restricted':
+          setError('Your access to this family is restricted. Contact a family administrator.');
+          return;
+        default:
+          setError('We could not match that family and password. Check the details and try again.');
+      }
+    } catch (joinError) {
+      console.warn('Family join form failed', joinError instanceof Error ? joinError.message : 'unknown error');
+      setError(joinError instanceof Error ? joinError.message : 'We could not join this family. Try again later.');
     } finally {
       setLoading(false);
     }
@@ -61,63 +60,46 @@ export default function FamilyCreationForm() {
         </Pressable>
 
         <View style={styles.intro}>
-          <View style={styles.iconWrap}><Feather name="users" size={25} color="#176b63" /></View>
-          <Text style={styles.title}>Create your family</Text>
-          <Text style={styles.subtitle}>Create a private family space where your family can share and stay connected.</Text>
+          <View style={styles.iconWrap}><Feather name="user-plus" size={24} color="#176b63" /></View>
+          <Text style={styles.title}>Join a family</Text>
+          <Text style={styles.subtitle}>Join an existing family with its name and private family password. Invitation links can also take you straight here.</Text>
         </View>
 
         <View style={styles.form}>
-          <FieldHeading
-            label="Family name"
-            title="Family name"
-            message="Choose a name that your family members will recognize."
-          />
+          <View style={styles.fieldHeading}>
+            <Text style={styles.label}>Family name</Text>
+            <InfoButton title="Family name" message="Enter the family name exactly as the family recognizes it. The family name and password are checked together. We do not reveal whether a family exists." />
+          </View>
           <TextInput
             style={styles.input}
             placeholder="The Martins"
             placeholderTextColor="#8a9691"
-            value={name}
-            onChangeText={setName}
+            value={familyName}
+            onChangeText={setFamilyName}
             autoCapitalize="words"
-            maxLength={80}
             returnKeyType="next"
           />
 
-          <FieldHeading
-            label="Family password"
-            title="Family password"
-            message="This password is used when someone joins your family directly. Keep it private and only share it with people you trust."
-          />
+          <View style={styles.fieldHeading}>
+            <Text style={styles.label}>Family password</Text>
+            <InfoButton title="Family password" message="The family owner or administrator shares this password with trusted people. It is verified securely by the server and is never returned to the app. An invitation link can also authorize joining without this password." />
+          </View>
           <TextInput
             style={styles.input}
-            placeholder="Enter a private family password"
+            placeholder="Enter the family password"
             placeholderTextColor="#8a9691"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
-            returnKeyType="next"
-          />
-
-          <FieldHeading
-            label="Maximum members"
-            title="Maximum members"
-            message="This is the maximum number of people who can belong to this family. Reaching this limit prevents new members from joining, but does not remove existing members."
-          />
-          <TextInput
-            style={styles.input}
-            value={memberLimit}
-            onChangeText={setMemberLimit}
-            keyboardType="number-pad"
             returnKeyType="done"
-            accessibilityLabel="Maximum members"
+            onSubmitEditing={() => void join()}
           />
-          <Text style={styles.fieldHint}>Maximum family size. The starting value of 12 can be changed.</Text>
 
           {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
 
-          <Pressable accessibilityRole="button" style={[styles.primaryButton, loading && styles.disabled]} onPress={handleCreate} disabled={loading}>
-            <Text style={styles.primaryText}>{loading ? 'Creating family...' : 'Create Family'}</Text>
+          <Pressable accessibilityRole="button" style={[styles.primaryButton, loading && styles.disabled]} onPress={() => void join()} disabled={loading}>
+            <Text style={styles.primaryText}>{loading ? 'Joining family...' : 'Join Family'}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -138,7 +120,6 @@ const styles = StyleSheet.create({
   fieldHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 9, marginBottom: 2 },
   label: { color: '#203a36', fontSize: 14, fontWeight: '700' },
   input: { minHeight: 48, borderWidth: 1, borderColor: '#cbd7cf', borderRadius: 6, paddingHorizontal: 13, color: '#18322f', backgroundColor: '#ffffff', fontSize: 15, marginBottom: 10 },
-  fieldHint: { color: '#74817c', fontSize: 12, marginTop: -4, marginBottom: 8 },
   error: { color: '#9b332b', fontSize: 14, lineHeight: 20, marginVertical: 9 },
   primaryButton: { minHeight: 50, borderRadius: 7, backgroundColor: '#176b63', alignItems: 'center', justifyContent: 'center', marginTop: 12 },
   primaryText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },

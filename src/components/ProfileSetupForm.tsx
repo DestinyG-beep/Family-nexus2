@@ -43,17 +43,18 @@ export default function ProfileSetupForm() {
         <Text style={styles.title}>Complete your profile</Text>
         <Text style={styles.subtitle}>Name is required before you can access the family app.</Text>
 
-        <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} />
+        <TextInput style={styles.input} placeholder="Name" placeholderTextColor="#8a9691" value={name} onChangeText={setName} />
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#8a9691"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
         />
-        <TextInput style={styles.input} placeholder="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        <TextInput style={styles.input} placeholder="Residence" value={residence} onChangeText={setResidence} />
+        <TextInput style={styles.input} placeholder="Phone" placeholderTextColor="#8a9691" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <TextInput style={styles.input} placeholder="Residence" placeholderTextColor="#8a9691" value={residence} onChangeText={setResidence} />
 
         <Pressable style={styles.primaryButton} onPress={handleSave} disabled={loading}>
           <Text style={styles.primaryButtonText}>{loading ? 'Saving...' : 'Continue to app'}</Text>

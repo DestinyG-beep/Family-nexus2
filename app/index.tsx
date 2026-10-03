@@ -1,33 +1,13 @@
-import { Redirect } from 'expo-router';
+import { Href, Redirect, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useState } from 'react';
 
 import AuthScreen from '../src/components/AuthScreen';
 import { useAuth } from '../src/context/AuthContext';
-import { getActiveFamilyMembership } from '../src/lib/familyService';
 
 export default function AppEntry() {
-  const { session, profile, isLoading, isProfileComplete } = useAuth();
-  const [hasFamilyAccess, setHasFamilyAccess] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!session || !profile || !isProfileComplete) {
-      setHasFamilyAccess(null);
-      return;
-    }
-
-    const checkMembership = async () => {
-      try {
-        const membership = await getActiveFamilyMembership(session.id);
-        setHasFamilyAccess(Boolean(membership));
-      } catch (error) {
-        console.warn('Unable to verify family access', error);
-        setHasFamilyAccess(false);
-      }
-    };
-
-    void checkMembership();
-  }, [session, profile, isProfileComplete]);
+  const { session, isLoading } = useAuth();
+  const { next } = useLocalSearchParams<{ next?: string }>();
+  const nextPath = typeof next === 'string' && /^\/join\/[a-f0-9]{64}$/.test(next) ? next : undefined;
 
   if (isLoading) {
     return (
@@ -39,27 +19,10 @@ export default function AppEntry() {
   }
 
   if (!session) {
-    return <AuthScreen />;
+    return <AuthScreen nextPath={nextPath} />;
   }
 
-  if (!profile || !isProfileComplete) {
-    return <Redirect href="/profile-setup" />;
-  }
-
-  if (hasFamilyAccess === false) {
-    return <Redirect href="/family-onboarding" />;
-  }
-
-  if (hasFamilyAccess === null) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4f46e5" />
-        <Text style={styles.loadingText}>Checking family membership...</Text>
-      </View>
-    );
-  }
-
-  return <Redirect href="/(tabs)" />;
+  return <Redirect href={(nextPath ?? '/(tabs)') as Href} />;
 }
 
 const styles = StyleSheet.create({

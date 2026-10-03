@@ -1,7 +1,8 @@
+import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import {
-  Alert,
   Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,28 +12,52 @@ import {
 
 import { useAuth } from '../context/AuthContext';
 
-export default function AuthScreen() {
+export default function AuthScreen({ nextPath }: { nextPath?: string }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [name, setName] = useState('Maya Patel');
-  const [email, setEmail] = useState('maya@family.app');
-  const [password, setPassword] = useState('demo123');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async () => {
+    if (mode === 'register' && !name.trim()) {
+      setMessage('Enter your name to create an account.');
+      return;
+    }
+    if (!email.trim() || !password) {
+      setMessage('Enter your email and password to continue.');
+      return;
+    }
+
     setLoading(true);
+    setMessage('');
 
     try {
       if (mode === 'register') {
-        const result = await signUp(name, email, password);
+        const emailRedirectTo = nextPath
+          ? Platform.OS === 'web' && typeof window !== 'undefined'
+            ? `${window.location.origin}${nextPath}`
+            : Linking.createURL(nextPath.replace(/^\//, ''))
+          : undefined;
+        const result = await signUp(name.trim(), email.trim(), password, emailRedirectTo);
         if (result === 'confirmation-required') {
-          Alert.alert('Confirm your email', 'Your account was created. Confirm your email, then log in.');
+          setMessage('Your account is ready. Confirm your email, then log in to continue.');
         }
       } else {
-        await signIn(email, password);
+        await signIn(email.trim(), password);
       }
     } catch (error) {
-      Alert.alert('Authentication failed', error instanceof Error ? error.message : 'Please try again.');
+      const messageText = error instanceof Error ? error.message.toLowerCase() : '';
+      console.warn('Authentication request failed');
+      setMessage(
+        messageText.includes('invalid login credentials') || messageText.includes('invalid credentials')
+          ? 'Email or password is incorrect.'
+          : messageText.includes('rate limit')
+            ? 'Too many attempts. Wait a while, then try again.'
+            : 'We could not complete sign-in. Check your details and try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -48,6 +73,7 @@ export default function AuthScreen() {
           <TextInput
             style={styles.input}
             placeholder="Full name"
+            placeholderTextColor="#8792a1"
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
@@ -57,6 +83,7 @@ export default function AuthScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#8792a1"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -66,6 +93,7 @@ export default function AuthScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor="#8792a1"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -75,7 +103,9 @@ export default function AuthScreen() {
           <Text style={styles.primaryButtonText}>{loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create account'}</Text>
         </Pressable>
 
-        <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
+        {message ? <Text accessibilityRole="alert" style={styles.message}>{message}</Text> : null}
+
+        <Pressable onPress={() => { setMessage(''); setMode(mode === 'login' ? 'register' : 'login'); }}>
           <Text style={styles.switchText}>
             {mode === 'login' ? 'Need an account? Register' : 'Already have an account? Login'}
           </Text>
@@ -121,6 +151,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     fontSize: 16,
     backgroundColor: '#f8fafc',
+  },
+  message: {
+    color: '#8b3d2f',
+    marginTop: 12,
+    textAlign: 'center',
   },
   primaryButton: {
     backgroundColor: '#4f46e5',
