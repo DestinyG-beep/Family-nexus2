@@ -22,6 +22,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.familynexus.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -31,12 +32,18 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-       "bundler": "metro",
-       "output": "single",
+      "bundler": "metro",
+      "output": "single",
       "favicon": "./assets/favicon.png"
     },
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1034df5-8e45-4979-9ff0-660e1d050fcc"
+      }
     }
   }
 }
