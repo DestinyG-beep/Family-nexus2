@@ -29,6 +29,10 @@ import {
 
 type MediaFilter = 'IMAGE' | 'VIDEO';
 
+export type MediaScreenProps = {
+  familyIdOverride?: string;
+};
+
 const MIME_BY_EXTENSION: Record<string, string> = {
   avif: 'image/avif',
   gif: 'image/gif',
@@ -75,7 +79,7 @@ function formatFileSize(size: number | null) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function MediaScreen() {
+export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
   const router = useRouter();
   const { session } = useAuth();
   const [memberships, setMemberships] = useState<ActiveFamilyMembership[]>([]);
@@ -111,11 +115,15 @@ export default function MediaScreen() {
           const result = await getActiveFamilyMemberships(session.id);
           if (!active) return;
           setMemberships(result);
-          setFamilyId((current) =>
-            result.some((membership) => membership.family_id === current)
+          if (familyIdOverride) {
+            const hasAccess = result.some((membership) => membership.family_id === familyIdOverride);
+            if (!hasAccess) setFamilyError('You do not have access to this family media space.');
+            setFamilyId(hasAccess ? familyIdOverride : null);
+          } else {
+            setFamilyId((current) => result.some((membership) => membership.family_id === current)
               ? current
-              : result[0]?.family_id ?? null
-          );
+              : result[0]?.family_id ?? null);
+          }
         } catch (error) {
           if (active) {
             setMemberships([]);
@@ -131,7 +139,7 @@ export default function MediaScreen() {
       return () => {
         active = false;
       };
-    }, [session])
+    }, [familyIdOverride, session])
   );
 
   useFocusEffect(
@@ -328,6 +336,12 @@ export default function MediaScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {familyIdOverride ? (
+        <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
+          <Feather name="arrow-left" size={18} color="#176b63" />
+          <Text style={styles.backText}>Family workspace</Text>
+        </Pressable>
+      ) : null}
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>YOUR FAMILY, TOGETHER</Text>
@@ -345,7 +359,7 @@ export default function MediaScreen() {
         </Pressable>
       </View>
 
-      {memberships.length > 1 ? (
+      {!familyIdOverride && memberships.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.familyChoices}>
           {memberships.map((membership) => {
             const selected = membership.family_id === familyId;
@@ -529,9 +543,13 @@ export default function MediaScreen() {
   );
 }
 
+export default MediaScreen;
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f4f7f3' },
   content: { width: '100%', maxWidth: 900, alignSelf: 'center', padding: 22, paddingBottom: 48, gap: 18 },
+  backButton: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start' },
+  backText: { color: '#176b63', fontSize: 14, fontWeight: '700' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   headerCopy: { flex: 1 },
   eyebrow: { color: '#54726b', fontSize: 11, fontWeight: '700', letterSpacing: 1 },

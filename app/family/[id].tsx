@@ -143,6 +143,20 @@ export default function FamilyDetailScreen() {
         <InfoButton title="Family members" message="Current members and maximum family size. Reaching the maximum prevents new people from joining, but never removes existing members." />
       </View>
 
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open media for ${membership.families.name}`}
+        onPress={() => router.push(`/family/${id}/media` as never)}
+        style={styles.mediaAction}
+      >
+        <View style={styles.mediaActionIcon}><Feather name="image" size={21} color="#176b63" /></View>
+        <View style={styles.mediaActionCopy}>
+          <Text style={styles.mediaActionTitle}>Family media</Text>
+          <Text style={styles.body}>Browse and share private photos and videos.</Text>
+        </View>
+        <Feather name="chevron-right" size={19} color="#176b63" />
+      </Pressable>
+
       <View style={styles.directoryPanel}>
         <Text style={styles.directoryTitle}>Family members</Text>
         {membersUnavailable ? (
@@ -199,6 +213,10 @@ const styles = StyleSheet.create({
   title: { color: '#102c2a', fontSize: 28, fontWeight: '700', textAlign: 'center' },
   role: { color: '#64746f', fontSize: 14, marginTop: 7 },
   memberPanel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 17, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd' },
+  mediaAction: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd' },
+  mediaActionIcon: { width: 42, height: 42, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e4f0e8' },
+  mediaActionCopy: { flex: 1, gap: 3 },
+  mediaActionTitle: { color: '#102c2a', fontSize: 16, fontWeight: '700' },
   directoryPanel: { padding: 17, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd', gap: 10 },
   directoryTitle: { color: '#102c2a', fontSize: 17, fontWeight: '700', marginBottom: 2 },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 46, borderTopWidth: 1, borderTopColor: '#e7ede8', paddingTop: 9 },

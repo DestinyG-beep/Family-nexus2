@@ -1,66 +1,134 @@
+import { Feather } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useRouter } from 'expo-router';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ThemePreference, useAuth } from '../../src/context/AuthContext';
+import { ActiveFamilyMembership, getActiveFamilyMemberships } from '../../src/lib/familyService';
 
-import { useAuth } from '../../src/context/AuthContext';
+const themeOptions: { key: ThemePreference; label: string; icon: 'smartphone' | 'sun' | 'moon' }[] = [
+  { key: 'SYSTEM', label: 'System', icon: 'smartphone' },
+  { key: 'LIGHT', label: 'Light', icon: 'sun' },
+  { key: 'DARK', label: 'Dark', icon: 'moon' },
+];
 
 export default function SettingsScreen() {
-  const { signOut } = useAuth();
   const router = useRouter();
+  const { session, profile, themePreference, setThemePreference, signOut } = useAuth();
+  const [memberships, setMemberships] = useState<ActiveFamilyMembership[]>([]);
+  const [loadingFamilies, setLoadingFamilies] = useState(true);
+  const [themeError, setThemeError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setLoadingFamilies(true);
+      if (!session?.id) {
+        setMemberships([]);
+        setLoadingFamilies(false);
+        return () => { active = false; };
+      }
+      void getActiveFamilyMemberships(session.id)
+        .then((result) => { if (active) setMemberships(result); })
+        .catch(() => { if (active) setMemberships([]); })
+        .finally(() => { if (active) setLoadingFamilies(false); });
+      return () => { active = false; };
+    }, [session])
+  );
+
+  const chooseTheme = async (preference: ThemePreference) => {
+    setThemeError('');
+    try {
+      await setThemePreference(preference);
+    } catch {
+      setThemeError('This theme preference could not be saved.');
+    }
+  };
 
   const handleLogout = async () => {
+    setLoggingOut(true);
     try {
       await signOut();
       router.replace('/');
     } catch (error) {
-      Alert.alert(
-        'Logout failed',
-        error instanceof Error ? error.message : 'Please try again.'
-      );
+      Alert.alert('Logout failed', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setLoggingOut(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.eyebrow}>ACCOUNT</Text>
       <Text style={styles.title}>Settings</Text>
-      <Text style={styles.item}>Theme: Light / Dark / System</Text>
-      <Text style={styles.item}>Family background: Enabled</Text>
-      <Text style={styles.item}>Profile completion reminder: On</Text>
 
-      <Pressable style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Logout</Text>
-      </Pressable>
-    </View>
+      <View style={styles.card}>
+        <View style={styles.cardHeading}><View style={styles.icon}><Feather name="user" size={18} color="#176b63" /></View><Text style={styles.cardTitle}>Signed in as</Text></View>
+        <Text style={styles.name}>{profile?.name || session?.name || 'Family member'}</Text>
+        <Text style={styles.body}>{session?.email || profile?.email || 'Email unavailable'}</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/profile' as never)} style={styles.linkButton}>
+          <Text style={styles.linkText}>Edit profile</Text><Feather name="arrow-up-right" size={16} color="#176b63" />
+        </Pressable>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Appearance</Text>
+        <Text style={styles.body}>Choose how Family Nexus follows your device.</Text>
+        <View style={styles.themeRow}>
+          {themeOptions.map((option) => {
+            const selected = themePreference === option.key;
+            return <Pressable key={option.key} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => void chooseTheme(option.key)} style={[styles.themeButton, selected && styles.themeButtonSelected]}>
+              <Feather name={option.icon} size={16} color={selected ? '#ffffff' : '#176b63'} />
+              <Text style={[styles.themeText, selected && styles.themeTextSelected]}>{option.label}</Text>
+            </Pressable>;
+          })}
+        </View>
+        {themeError ? <Text accessibilityRole="alert" style={styles.error}>{themeError}</Text> : null}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Family areas</Text>
+        {loadingFamilies ? <ActivityIndicator color="#176b63" style={styles.familyLoading} /> : memberships.length === 0 ? <Text style={styles.body}>Join or create a family to see its workspace here.</Text> : memberships.map((membership) => <Pressable key={membership.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/family/[id]', params: { id: membership.family_id } })} style={styles.familyRow}>
+          <View style={styles.icon}><Feather name="users" size={18} color="#176b63" /></View>
+          <Text style={styles.familyName}>{membership.families?.name ?? 'Family space'}</Text>
+          <Feather name="chevron-right" size={18} color="#176b63" />
+        </Pressable>)}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Session</Text>
+        <Pressable accessibilityRole="button" disabled={loggingOut} onPress={() => void handleLogout()} style={[styles.logoutButton, loggingOut && styles.disabled]}>
+          {loggingOut ? <ActivityIndicator color="#ffffff" /> : <><Feather name="log-out" size={17} color="#ffffff" /><Text style={styles.logoutText}>Log out</Text></>}
+        </Pressable>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    padding: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 18,
-    color: '#0f172a',
-  },
-  item: {
-    color: '#334155',
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  logoutButton: {
-    marginTop: 24,
-    backgroundColor: '#ef4444',
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: '#ffffff',
-    fontWeight: '700',
-  },
+  container: { flex: 1, backgroundColor: '#f4f7f3' },
+  content: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: 22, paddingBottom: 48, gap: 14 },
+  eyebrow: { color: '#54726b', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  title: { color: '#102c2a', fontSize: 29, fontWeight: '700', marginTop: -4, marginBottom: 6 },
+  card: { padding: 18, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd', gap: 8 },
+  cardHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  cardTitle: { color: '#203a36', fontSize: 17, fontWeight: '700' },
+  icon: { width: 36, height: 36, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e4f0e8' },
+  name: { color: '#102c2a', fontSize: 16, fontWeight: '700', marginTop: 2 },
+  body: { color: '#65736f', fontSize: 14, lineHeight: 20 },
+  linkButton: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 2 },
+  linkText: { color: '#176b63', fontWeight: '700' },
+  themeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  themeButton: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, borderRadius: 6, borderWidth: 1, borderColor: '#b8c9be' },
+  themeButtonSelected: { backgroundColor: '#176b63', borderColor: '#176b63' },
+  themeText: { color: '#315a53', fontSize: 13, fontWeight: '700' },
+  themeTextSelected: { color: '#ffffff' },
+  familyLoading: { marginVertical: 10 },
+  familyRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: '#e7ede8', paddingTop: 9 },
+  familyName: { flex: 1, color: '#203a36', fontSize: 15, fontWeight: '600' },
+  logoutButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 7, backgroundColor: '#9b332b', marginTop: 3 },
+  logoutText: { color: '#ffffff', fontWeight: '700' },
+  disabled: { opacity: 0.6 },
+  error: { color: '#9b332b', fontSize: 13, marginTop: 4 },
 });

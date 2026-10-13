@@ -18,7 +18,6 @@ export default function TabLayout() {
         tabBarIcon: ({ color, size }) => {
           const iconMap: Record<string, string> = {
             index: '🏠',
-            media: '🖼️',
             calendar: '📅',
             profile: '👤',
             settings: '⚙️',
@@ -30,7 +29,7 @@ export default function TabLayout() {
       })}
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="media" options={{ title: 'Media' }} />
+      <Tabs.Screen name="media" options={{ href: null }} />
       <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings' }} />

@@ -1,4 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Appearance } from 'react-native';
 
 import { hasSupabaseConfig, requireSupabase, supabase } from '../lib/supabase';
 
@@ -21,11 +23,15 @@ export type SessionUser = {
   name: string;
 };
 
+export type ThemePreference = 'SYSTEM' | 'LIGHT' | 'DARK';
+
 type AuthContextValue = {
   session: SessionUser | null;
   profile: ProfileRecord | null;
   isLoading: boolean;
   isProfileComplete: boolean;
+  themePreference: ThemePreference;
+  setThemePreference: (preference: ThemePreference) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string, emailRedirectTo?: string) => Promise<'signed-in' | 'confirmation-required'>;
   updateProfile: (input: {
@@ -84,6 +90,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [isLoading, setIsLoading] = useState(() => !!supabase);
+  const [themePreference, setThemePreferenceState] = useState<ThemePreference>('SYSTEM');
+
+  useEffect(() => {
+    void AsyncStorage.getItem('family-nexus-theme').then((stored) => {
+      if (stored === 'SYSTEM' || stored === 'LIGHT' || stored === 'DARK') {
+        setThemePreferenceState(stored);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    Appearance.setColorScheme(themePreference === 'SYSTEM' ? 'unspecified' : themePreference.toLowerCase() as 'light' | 'dark');
+  }, [themePreference]);
 
   const syncAuthState = async () => {
     if (!hasSupabaseConfig || !supabase) {
@@ -253,18 +272,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   };
 
+  const setThemePreference = async (preference: ThemePreference) => {
+    setThemePreferenceState(preference);
+    await AsyncStorage.setItem('family-nexus-theme', preference);
+  };
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       profile,
       isLoading,
       isProfileComplete: !!profile?.profile_completed && !!profile?.name && profile.name.trim().length > 0,
+      themePreference,
+      setThemePreference,
       signIn,
       signUp,
       updateProfile,
       signOut,
     }),
-    [session, profile, isLoading, updateProfile]
+    [session, profile, isLoading, themePreference, updateProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
