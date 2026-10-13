@@ -35,6 +35,24 @@ export type FamilyMemberSummary = {
   role: string;
 };
 
+export type FamilyAdminMember = {
+  id: string;
+  user_id: string;
+  member_name: string;
+  email: string | null;
+  role: 'SUPERADMIN' | 'ADMIN' | 'MEMBER';
+  status: 'ACTIVE' | 'RESTRICTED';
+  joined_at: string;
+};
+
+export type FamilySettings = {
+  id: string;
+  name: string;
+  member_limit: number;
+  default_background_media_id: string | null;
+  owner_id: string;
+};
+
 export async function getActiveFamilyMemberships(userId?: string): Promise<ActiveFamilyMembership[]> {
   const client = requireSupabase();
   const targetUserId = userId ?? (await client.auth.getUser()).data.user?.id;
@@ -192,4 +210,48 @@ export async function getFamily(familyId: string) {
   }
 
   return (data as FamilySummary | null) ?? null;
+}
+
+export async function getFamilySettings(familyId: string) {
+  const { data, error } = await requireSupabase().rpc('get_family_settings', { p_family_id: familyId });
+  if (error) throw new Error(error.message || 'Family settings could not be loaded.');
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row as FamilySettings | null) ?? null;
+}
+
+export async function getFamilyAdminMembers(familyId: string) {
+  const { data, error } = await requireSupabase().rpc('get_family_admin_members', { p_family_id: familyId });
+  if (error) throw new Error(error.message || 'Family members could not be loaded.');
+  return (data ?? []) as FamilyAdminMember[];
+}
+
+export async function updateFamilyMemberRole(familyId: string, memberId: string, role: 'ADMIN' | 'MEMBER') {
+  const { data, error } = await requireSupabase().rpc('update_family_member_role', {
+    p_family_id: familyId,
+    p_member_id: memberId,
+    p_role: role,
+  });
+  if (error) throw new Error(error.message || 'The member role could not be updated.');
+  return data as { status: 'updated' };
+}
+
+export async function setFamilyMemberStatus(familyId: string, memberId: string, status: 'ACTIVE' | 'RESTRICTED' | 'REMOVED') {
+  const { data, error } = await requireSupabase().rpc('set_family_member_status', {
+    p_family_id: familyId,
+    p_member_id: memberId,
+    p_status: status,
+  });
+  if (error) throw new Error(error.message || 'The member status could not be updated.');
+  return data as { status: 'updated' };
+}
+
+export async function updateFamilySettings(input: { familyId: string; name: string; memberLimit: number }) {
+  const { data, error } = await requireSupabase().rpc('update_family_settings', {
+    p_family_id: input.familyId,
+    p_name: input.name.trim(),
+    p_member_limit: input.memberLimit,
+  });
+  if (error) throw new Error(error.message || 'Family settings could not be saved.');
+  const row = Array.isArray(data) ? data[0] : data;
+  return row as FamilySettings;
 }

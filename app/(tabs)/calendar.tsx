@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleS
 import { useAuth } from '../../src/context/AuthContext';
 import { ActiveFamilyMembership, getActiveFamilyMemberships } from '../../src/lib/familyService';
 import { CalendarEvent, createCalendarEvent, deleteCalendarEvent, listCalendarEvents, updateCalendarEvent } from '../../src/lib/calendarService';
+import { useAppTheme } from '../../src/theme/useAppTheme';
 
 type FormState = { name: string; date: string; time: string; location: string; mapUrl: string; familyId: string };
 const emptyForm: FormState = { name: '', date: '', time: '', location: '', mapUrl: '', familyId: '' };
@@ -30,6 +31,7 @@ function displayDate(value: string | null) {
 
 export default function CalendarScreen() {
   const { session } = useAuth();
+  const { colors } = useAppTheme();
   const [memberships, setMemberships] = useState<ActiveFamilyMembership[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,18 +123,18 @@ export default function CalendarScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <View><Text style={styles.eyebrow}>ACCOUNT</Text><Text style={styles.title}>Calendar</Text><Text style={styles.subtitle}>Events from the family spaces you belong to.</Text></View>
-        <Pressable accessibilityRole="button" disabled={memberships.length === 0} onPress={openCreate} style={[styles.addButton, memberships.length === 0 && styles.disabled]}><Feather name="plus" size={19} color="#ffffff" /><Text style={styles.addText}>Create</Text></Pressable>
+        <View><Text style={[styles.eyebrow, { color: colors.primary }]}>ACCOUNT</Text><Text style={[styles.title, { color: colors.heading }]}>Calendar</Text><Text style={[styles.subtitle, { color: colors.body }]}>Events from the family spaces you belong to.</Text></View>
+        <Pressable accessibilityRole="button" disabled={memberships.length === 0} onPress={openCreate} style={[styles.addButton, { backgroundColor: colors.primary }, memberships.length === 0 && styles.disabled]}><Feather name="plus" size={19} color={colors.onPrimary} /><Text style={[styles.addText, { color: colors.onPrimary }]}>Create</Text></Pressable>
       </View>
 
-      {loading ? <View style={styles.state}><ActivityIndicator color="#176b63" /><Text style={styles.muted}>Loading events...</Text></View> : error && events.length === 0 ? <View style={styles.state}><Text accessibilityRole="alert" style={styles.error}>{error}</Text><Pressable onPress={() => void loadCalendar()} style={styles.retry}><Text style={styles.retryText}>Try again</Text></Pressable></View> : memberships.length === 0 ? <View style={styles.state}><Feather name="calendar" size={28} color="#176b63" /><Text style={styles.emptyTitle}>Join or create a family first</Text><Text style={styles.muted}>Family events will appear here once you belong to a family.</Text></View> : events.length === 0 ? <View style={styles.state}><Feather name="calendar" size={28} color="#176b63" /><Text style={styles.emptyTitle}>No events yet</Text><Text style={styles.muted}>Create the first event for one of your families.</Text></View> : <View style={styles.list}>{events.map((event) => <View key={event.id} style={styles.eventCard}>
-        <View style={styles.eventHeading}><View style={styles.dateIcon}><Feather name="calendar" size={18} color="#176b63" /></View><View style={styles.eventCopy}><Text style={styles.eventName}>{event.name}</Text><Text style={styles.familyName}>{event.family_name}</Text></View></View>
-        <Text style={styles.eventMeta}><Feather name="clock" size={14} color="#65736f" /> {displayDate(event.start_at)}</Text>
-        {event.location_name ? <Text style={styles.eventMeta}><Feather name="map-pin" size={14} color="#65736f" /> {event.location_name}</Text> : null}
-        {event.map_url ? <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(event.map_url!)}><Text style={styles.mapLink}>Open map link</Text></Pressable> : null}
-        {event.created_by === session?.id ? <View style={styles.eventActions}><Pressable accessibilityRole="button" onPress={() => openEdit(event)} style={styles.actionButton}><Feather name="edit-2" size={14} color="#176b63" /><Text style={styles.actionText}>Edit</Text></Pressable><Pressable accessibilityRole="button" onPress={() => removeEvent(event)} style={styles.actionButton}><Feather name="trash-2" size={14} color="#9b332b" /><Text style={styles.deleteText}>Delete</Text></Pressable></View> : null}
+      {loading ? <View style={[styles.state, { backgroundColor: colors.surface, borderColor: colors.border }]}><ActivityIndicator color={colors.primary} /><Text style={[styles.muted, { color: colors.body }]}>Loading events...</Text></View> : error && events.length === 0 ? <View style={[styles.state, { backgroundColor: colors.surface, borderColor: colors.border }]}><Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>{error}</Text><Pressable onPress={() => void loadCalendar()} style={[styles.retry, { backgroundColor: colors.primary }]}><Text style={[styles.retryText, { color: colors.onPrimary }]}>Try again</Text></Pressable></View> : memberships.length === 0 ? <View style={[styles.state, { backgroundColor: colors.surface, borderColor: colors.border }]}><Feather name="calendar" size={28} color={colors.primary} /><Text style={[styles.emptyTitle, { color: colors.heading }]}>Join or create a family first</Text><Text style={[styles.muted, { color: colors.body }]}>Family events will appear here once you belong to a family.</Text></View> : events.length === 0 ? <View style={[styles.state, { backgroundColor: colors.surface, borderColor: colors.border }]}><Feather name="calendar" size={28} color={colors.primary} /><Text style={[styles.emptyTitle, { color: colors.heading }]}>No events yet</Text><Text style={[styles.muted, { color: colors.body }]}>Create the first event for one of your families.</Text></View> : <View style={styles.list}>{events.map((event) => <View key={event.id} style={[styles.eventCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.eventHeading}><View style={[styles.dateIcon, { backgroundColor: `${colors.secondary}18` }]}><Feather name="calendar" size={18} color={colors.secondary} /></View><View style={styles.eventCopy}><Text style={[styles.eventName, { color: colors.heading }]}>{event.name}</Text><Text style={[styles.familyName, { color: colors.secondary }]}>{event.family_name}</Text></View></View>
+        <Text style={[styles.eventMeta, { color: colors.body }]}><Feather name="clock" size={14} color={colors.muted} /> {displayDate(event.start_at)}</Text>
+        {event.location_name ? <Text style={[styles.eventMeta, { color: colors.body }]}><Feather name="map-pin" size={14} color={colors.muted} /> {event.location_name}</Text> : null}
+        {event.map_url ? <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(event.map_url!)}><Text style={[styles.mapLink, { color: colors.primary }]}>Open map link</Text></Pressable> : null}
+        {event.created_by === session?.id ? <View style={styles.eventActions}><Pressable accessibilityRole="button" onPress={() => openEdit(event)} style={styles.actionButton}><Feather name="edit-2" size={14} color={colors.secondary} /><Text style={[styles.actionText, { color: colors.secondary }]}>Edit</Text></Pressable><Pressable accessibilityRole="button" onPress={() => removeEvent(event)} style={styles.actionButton}><Feather name="trash-2" size={14} color={colors.danger} /><Text style={[styles.deleteText, { color: colors.danger }]}>Delete</Text></Pressable></View> : null}
       </View>)}</View>}
       {error && events.length > 0 ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {!loading && memberships.length > 0 ? <Pressable accessibilityRole="button" disabled={refreshing} onPress={() => { setRefreshing(true); void loadCalendar(false); }} style={styles.refresh}><Feather name="refresh-cw" size={15} color="#176b63" /><Text style={styles.refreshText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text></Pressable> : null}

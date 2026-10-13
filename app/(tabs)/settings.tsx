@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 
 import { ThemePreference, useAuth } from '../../src/context/AuthContext';
 import { ActiveFamilyMembership, getActiveFamilyMemberships } from '../../src/lib/familyService';
+import { useAppTheme } from '../../src/theme/useAppTheme';
 
 const themeOptions: { key: ThemePreference; label: string; icon: 'smartphone' | 'sun' | 'moon' }[] = [
   { key: 'SYSTEM', label: 'System', icon: 'smartphone' },
@@ -15,6 +16,7 @@ const themeOptions: { key: ThemePreference; label: string; icon: 'smartphone' | 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session, profile, themePreference, setThemePreference, signOut } = useAuth();
+  const { colors } = useAppTheme();
   const [memberships, setMemberships] = useState<ActiveFamilyMembership[]>([]);
   const [loadingFamilies, setLoadingFamilies] = useState(true);
   const [themeError, setThemeError] = useState('');
@@ -59,47 +61,47 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.eyebrow}>ACCOUNT</Text>
-      <Text style={styles.title}>Settings</Text>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
+      <Text style={[styles.eyebrow, { color: colors.primary }]}>ACCOUNT</Text>
+      <Text style={[styles.title, { color: colors.heading }]}>Settings</Text>
 
-      <View style={styles.card}>
-        <View style={styles.cardHeading}><View style={styles.icon}><Feather name="user" size={18} color="#176b63" /></View><Text style={styles.cardTitle}>Signed in as</Text></View>
-        <Text style={styles.name}>{profile?.name || session?.name || 'Family member'}</Text>
-        <Text style={styles.body}>{session?.email || profile?.email || 'Email unavailable'}</Text>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.cardHeading}><View style={[styles.icon, { backgroundColor: `${colors.primary}18` }]}><Feather name="user" size={18} color={colors.primary} /></View><Text style={[styles.cardTitle, { color: colors.heading }]}>Signed in as</Text></View>
+        <Text style={[styles.name, { color: colors.heading }]}>{profile?.name || session?.name || 'Family member'}</Text>
+        <Text style={[styles.body, { color: colors.body }]}>{session?.email || profile?.email || 'Email unavailable'}</Text>
         <Pressable accessibilityRole="button" onPress={() => router.push('/profile' as never)} style={styles.linkButton}>
-          <Text style={styles.linkText}>Edit profile</Text><Feather name="arrow-up-right" size={16} color="#176b63" />
+          <Text style={[styles.linkText, { color: colors.primary }]}>Edit profile</Text><Feather name="arrow-up-right" size={16} color={colors.primary} />
         </Pressable>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Appearance</Text>
-        <Text style={styles.body}>Choose how Family Nexus follows your device.</Text>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.heading }]}>Appearance</Text>
+        <Text style={[styles.body, { color: colors.body }]}>Choose how Family Nexus follows your device.</Text>
         <View style={styles.themeRow}>
           {themeOptions.map((option) => {
             const selected = themePreference === option.key;
             return <Pressable key={option.key} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => void chooseTheme(option.key)} style={[styles.themeButton, selected && styles.themeButtonSelected]}>
-              <Feather name={option.icon} size={16} color={selected ? '#ffffff' : '#176b63'} />
-              <Text style={[styles.themeText, selected && styles.themeTextSelected]}>{option.label}</Text>
+              <Feather name={option.icon} size={16} color={selected ? colors.onPrimary : colors.primary} />
+              <Text style={[styles.themeText, { color: selected ? colors.onPrimary : colors.primary }, selected && styles.themeTextSelected]}>{option.label}</Text>
             </Pressable>;
           })}
         </View>
-        {themeError ? <Text accessibilityRole="alert" style={styles.error}>{themeError}</Text> : null}
+        {themeError ? <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>{themeError}</Text> : null}
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Family areas</Text>
-        {loadingFamilies ? <ActivityIndicator color="#176b63" style={styles.familyLoading} /> : memberships.length === 0 ? <Text style={styles.body}>Join or create a family to see its workspace here.</Text> : memberships.map((membership) => <Pressable key={membership.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/family/[id]', params: { id: membership.family_id } })} style={styles.familyRow}>
-          <View style={styles.icon}><Feather name="users" size={18} color="#176b63" /></View>
-          <Text style={styles.familyName}>{membership.families?.name ?? 'Family space'}</Text>
-          <Feather name="chevron-right" size={18} color="#176b63" />
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.heading }]}>Family areas</Text>
+        {loadingFamilies ? <ActivityIndicator color={colors.primary} style={styles.familyLoading} /> : memberships.length === 0 ? <Text style={[styles.body, { color: colors.body }]}>Join or create a family to see its workspace here.</Text> : memberships.map((membership) => <Pressable key={membership.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/family/[id]', params: { id: membership.family_id } })} style={[styles.familyRow, { borderTopColor: colors.border }]}>
+          <View style={[styles.icon, { backgroundColor: `${colors.secondary}18` }]}><Feather name="users" size={18} color={colors.secondary} /></View>
+          <Text style={[styles.familyName, { color: colors.heading }]}>{membership.families?.name ?? 'Family space'}</Text>
+          <Feather name="chevron-right" size={18} color={colors.primary} />
         </Pressable>)}
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Session</Text>
-        <Pressable accessibilityRole="button" disabled={loggingOut} onPress={() => void handleLogout()} style={[styles.logoutButton, loggingOut && styles.disabled]}>
-          {loggingOut ? <ActivityIndicator color="#ffffff" /> : <><Feather name="log-out" size={17} color="#ffffff" /><Text style={styles.logoutText}>Log out</Text></>}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.cardTitle, { color: colors.heading }]}>Session</Text>
+        <Pressable accessibilityRole="button" disabled={loggingOut} onPress={() => void handleLogout()} style={[styles.logoutButton, { backgroundColor: colors.danger }, loggingOut && styles.disabled]}>
+          {loggingOut ? <ActivityIndicator color={colors.onPrimary} /> : <><Feather name="log-out" size={17} color={colors.onPrimary} /><Text style={[styles.logoutText, { color: colors.onPrimary }]}>Log out</Text></>}
         </Pressable>
       </View>
     </ScrollView>

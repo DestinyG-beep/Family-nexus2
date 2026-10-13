@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAuth } from '../../src/context/AuthContext';
+import { useAppTheme } from '../../src/theme/useAppTheme';
 
 export default function ProfileScreen() {
   const { session, profile, isLoading, isProfileComplete, updateProfile } = useAuth();
+  const { colors } = useAppTheme();
   const [name, setName] = useState(profile?.name ?? session?.name ?? '');
   const [email, setEmail] = useState(profile?.email ?? session?.email ?? '');
   const [phone, setPhone] = useState(profile?.phone_number ?? '');
@@ -41,32 +43,32 @@ export default function ProfileScreen() {
   };
 
   if (isLoading) {
-    return <View style={styles.state}><ActivityIndicator color="#176b63" /><Text style={styles.muted}>Loading your profile...</Text></View>;
+    return <View style={[styles.state, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.primary} /><Text style={[styles.muted, { color: colors.body }]}>Loading your profile...</Text></View>;
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.eyebrow}>ACCOUNT</Text>
-      <Text style={styles.title}>Profile</Text>
-      <Text style={styles.subtitle}>Keep your family directory details up to date.</Text>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <Text style={[styles.eyebrow, { color: colors.primary }]}>ACCOUNT</Text>
+      <Text style={[styles.title, { color: colors.heading }]}>Profile</Text>
+      <Text style={[styles.subtitle, { color: colors.body }]}>Keep your family directory details up to date.</Text>
 
-      <View style={styles.avatar}><Feather name="user" size={32} color="#176b63" /></View>
-      <Text style={styles.completion}>{isProfileComplete ? 'Profile complete' : 'Profile setup is incomplete'}</Text>
+      <View style={[styles.avatar, { backgroundColor: `${colors.primary}20` }]}><Feather name="user" size={32} color={colors.primary} /></View>
+      <Text style={[styles.completion, { color: colors.secondary }]}>{isProfileComplete ? 'Profile complete' : 'Profile setup is incomplete'}</Text>
 
-      <View style={styles.formCard}>
-        <Text style={styles.label}>Name <Text style={styles.required}>*</Text></Text>
-        <TextInput value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor="#8a9691" style={styles.input} autoCapitalize="words" />
-        <Text style={styles.label}>Email</Text>
-        <TextInput value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor="#8a9691" style={styles.input} keyboardType="email-address" autoCapitalize="none" />
-        <Text style={styles.label}>Phone number</Text>
-        <TextInput value={phone} onChangeText={setPhone} placeholder="Optional" placeholderTextColor="#8a9691" style={styles.input} keyboardType="phone-pad" />
-        <Text style={styles.label}>Residence</Text>
-        <TextInput value={residence} onChangeText={setResidence} placeholder="Optional" placeholderTextColor="#8a9691" style={styles.input} />
+      <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.label, { color: colors.heading }]}>Name <Text style={[styles.required, { color: colors.danger }]}>*</Text></Text>
+        <TextInput value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={colors.muted} style={[styles.input, { color: colors.heading, borderColor: colors.border, backgroundColor: colors.surfaceMuted }]} autoCapitalize="words" />
+        <Text style={[styles.label, { color: colors.heading }]}>Email</Text>
+        <TextInput value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={colors.muted} style={[styles.input, { color: colors.heading, borderColor: colors.border, backgroundColor: colors.surfaceMuted }]} keyboardType="email-address" autoCapitalize="none" />
+        <Text style={[styles.label, { color: colors.heading }]}>Phone number</Text>
+        <TextInput value={phone} onChangeText={setPhone} placeholder="Optional" placeholderTextColor={colors.muted} style={[styles.input, { color: colors.heading, borderColor: colors.border, backgroundColor: colors.surfaceMuted }]} keyboardType="phone-pad" />
+        <Text style={[styles.label, { color: colors.heading }]}>Residence</Text>
+        <TextInput value={residence} onChangeText={setResidence} placeholder="Optional" placeholderTextColor={colors.muted} style={[styles.input, { color: colors.heading, borderColor: colors.border, backgroundColor: colors.surfaceMuted }]} />
 
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-        {message ? <Text style={styles.success}>{message}</Text> : null}
-        <Pressable accessibilityRole="button" disabled={saving || !session} onPress={() => void saveProfile()} style={[styles.primaryButton, (saving || !session) && styles.disabled]}>
-          {saving ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryText}>Save profile</Text>}
+        {error ? <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
+        {message ? <Text style={[styles.success, { color: colors.success }]}>{message}</Text> : null}
+        <Pressable accessibilityRole="button" disabled={saving || !session} onPress={() => void saveProfile()} style={[styles.primaryButton, { backgroundColor: colors.primary }, (saving || !session) && styles.disabled]}>
+          {saving ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={[styles.primaryText, { color: colors.onPrimary }]}>Save profile</Text>}
         </Pressable>
       </View>
     </ScrollView>

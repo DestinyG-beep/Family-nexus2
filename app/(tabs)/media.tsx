@@ -26,6 +26,7 @@ import {
   setMediaPinned,
   uploadFamilyMedia,
 } from '../../src/lib/mediaService';
+import { useAppTheme } from '../../src/theme/useAppTheme';
 
 type MediaFilter = 'IMAGE' | 'VIDEO';
 
@@ -82,6 +83,7 @@ function formatFileSize(size: number | null) {
 export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
   const router = useRouter();
   const { session } = useAuth();
+  const { colors } = useAppTheme();
   const [memberships, setMemberships] = useState<ActiveFamilyMembership[]>([]);
   const [familyId, setFamilyId] = useState<string | null>(null);
   const [filter, setFilter] = useState<MediaFilter>('IMAGE');
@@ -335,27 +337,27 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       {familyIdOverride ? (
         <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-          <Feather name="arrow-left" size={18} color="#176b63" />
-          <Text style={styles.backText}>Family workspace</Text>
+          <Feather name="arrow-left" size={18} color={colors.primary} />
+          <Text style={[styles.backText, { color: colors.primary }]}>Family workspace</Text>
         </Pressable>
       ) : null}
       <View style={styles.header}>
         <View style={styles.headerCopy}>
-          <Text style={styles.eyebrow}>YOUR FAMILY, TOGETHER</Text>
-          <Text style={styles.title}>Media</Text>
-          <Text style={styles.subtitle}>Private photos and videos shared by your family.</Text>
+          <Text style={[styles.eyebrow, { color: colors.primary }]}>YOUR FAMILY, TOGETHER</Text>
+          <Text style={[styles.title, { color: colors.heading }]}>Media</Text>
+          <Text style={[styles.subtitle, { color: colors.body }]}>Private photos and videos shared by your family.</Text>
         </View>
         <Pressable
           accessibilityRole="button"
           disabled={!currentFamily || uploading || loadingFamilies}
           onPress={() => void startUpload()}
-          style={[styles.uploadButton, (!currentFamily || uploading || loadingFamilies) && styles.disabled]}
+          style={[styles.uploadButton, { backgroundColor: colors.primary }, (!currentFamily || uploading || loadingFamilies) && styles.disabled]}
         >
-          {uploading ? <ActivityIndicator size="small" color="#ffffff" /> : <Feather name="upload" size={17} color="#ffffff" />}
-          <Text style={styles.uploadText}>{uploading ? 'Uploading…' : 'Upload'}</Text>
+          {uploading ? <ActivityIndicator size="small" color={colors.onPrimary} /> : <Feather name="upload" size={17} color={colors.onPrimary} />}
+          <Text style={[styles.uploadText, { color: colors.onPrimary }]}>{uploading ? 'Uploading…' : 'Upload'}</Text>
         </Pressable>
       </View>
 

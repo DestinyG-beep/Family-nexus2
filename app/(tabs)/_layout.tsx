@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
 
 export default function TabLayout() {
   return (
@@ -16,15 +17,15 @@ export default function TabLayout() {
           paddingTop: 8,
         },
         tabBarIcon: ({ color, size }) => {
-          const iconMap: Record<string, string> = {
-            index: '🏠',
-            calendar: '📅',
-            profile: '👤',
-            settings: '⚙️',
+          const iconMap: Record<string, ComponentProps<typeof Feather>['name']> = {
+            index: 'home',
+            calendar: 'calendar',
+            profile: 'user',
+            settings: 'settings',
           };
 
           const icon = iconMap[route.name] ?? '•';
-          return <Text style={{ color, fontSize: size, lineHeight: size }}>{icon}</Text>;
+          return <Feather name={icon} size={size} color={color} />;
         },
       })}
     >

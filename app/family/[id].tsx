@@ -6,14 +6,11 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import InfoButton from '../../src/components/InfoButton';
+import ActionCard from '../../src/components/ActionCard';
+import RoleBadge from '../../src/components/RoleBadge';
 import { useAuth } from '../../src/context/AuthContext';
 import { ActiveFamilyMembership, FamilyMemberSummary, createFamilyInvitation, getActiveFamilyMemberships, getFamilyMemberDirectory } from '../../src/lib/familyService';
-
-function roleLabel(role: string) {
-  if (role === 'SUPERADMIN') return 'Family Owner';
-  if (role === 'ADMIN') return 'Administrator';
-  return 'Member';
-}
+import { useAppTheme } from '../../src/theme/useAppTheme';
 
 export default function FamilyDetailScreen() {
   const router = useRouter();
@@ -24,6 +21,7 @@ export default function FamilyDetailScreen() {
   const [membersUnavailable, setMembersUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const { colors } = useAppTheme();
   const [inviteUrl, setInviteUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState('');
@@ -123,63 +121,57 @@ export default function FamilyDetailScreen() {
   const canInvite = membership.role === 'SUPERADMIN' || membership.role === 'ADMIN';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-        <Feather name="arrow-left" size={19} color="#176b63" />
-        <Text style={styles.backText}>Home</Text>
+        <Feather name="arrow-left" size={19} color={colors.primary} />
+        <Text style={[styles.backText, { color: colors.primary }]}>Home</Text>
       </Pressable>
 
-      <View style={styles.hero}>
-        <View style={styles.groupIcon}><Feather name="users" size={34} color="#176b63" /></View>
-        <Text style={styles.title}>{membership.families.name}</Text>
-        <Text style={styles.role}>{roleLabel(membership.role)} · Active</Text>
+      <View style={[styles.hero, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
+        <View style={[styles.groupIcon, { backgroundColor: `${colors.primary}18` }]}><Feather name="users" size={34} color={colors.primary} /></View>
+        <Text style={[styles.title, { color: colors.heading }]}>{membership.families.name}</Text>
+        <View style={styles.heroMeta}><RoleBadge role={membership.role} /><Text style={[styles.role, { color: colors.body }]}>{membership.member_count} members · Active</Text></View>
+        <Text style={[styles.heroSubtitle, { color: colors.body }]}>A private space for the people who matter most.</Text>
       </View>
 
-      <View style={styles.memberPanel}>
+      <View style={[styles.memberPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View>
-          <Text style={styles.label}>Family members</Text>
-          <Text style={styles.count}>{membership.member_count} / {membership.families.member_limit} members</Text>
+          <Text style={[styles.label, { color: colors.muted }]}>Family capacity</Text>
+          <Text style={[styles.count, { color: colors.heading }]}>{membership.member_count} / {membership.families.member_limit} members</Text>
         </View>
         <InfoButton title="Family members" message="Current members and maximum family size. Reaching the maximum prevents new people from joining, but never removes existing members." />
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Open media for ${membership.families.name}`}
-        onPress={() => router.push(`/family/${id}/media` as never)}
-        style={styles.mediaAction}
-      >
-        <View style={styles.mediaActionIcon}><Feather name="image" size={21} color="#176b63" /></View>
-        <View style={styles.mediaActionCopy}>
-          <Text style={styles.mediaActionTitle}>Family media</Text>
-          <Text style={styles.body}>Browse and share private photos and videos.</Text>
-        </View>
-        <Feather name="chevron-right" size={19} color="#176b63" />
-      </Pressable>
+      <View style={styles.actions}>
+        <ActionCard icon="image" title="Media" description="Browse and share private photos and videos." onPress={() => router.push(`/family/${id}/media` as never)} />
+        <ActionCard icon="users" title="Members" description="See the people in this family space." accent="secondary" onPress={() => router.push(`/family/${id}/members` as never)} />
+        <ActionCard icon="calendar" title="Calendar" description="Keep up with shared family events." accent="secondary" onPress={() => router.push('/calendar' as never)} />
+        {membership.role === 'SUPERADMIN' ? <ActionCard icon="settings" title="Family settings" description="Manage the shared name and member capacity." onPress={() => router.push(`/family/${id}/settings` as never)} /> : null}
+      </View>
 
-      <View style={styles.directoryPanel}>
-        <Text style={styles.directoryTitle}>Family members</Text>
+      <View style={[styles.directoryPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[styles.directoryTitle, { color: colors.heading }]}>Family members</Text>
         {membersUnavailable ? (
-          <Text style={styles.body}>Member details are temporarily unavailable.</Text>
+          <Text style={[styles.body, { color: colors.body }]}>Member details are temporarily unavailable.</Text>
         ) : members.length === 0 ? (
-          <Text style={styles.body}>No active members are listed yet.</Text>
+          <Text style={[styles.body, { color: colors.body }]}>No active members are listed yet.</Text>
         ) : (
           members.map((member, index) => (
             <View key={`${member.member_name}-${index}`} style={styles.memberRow}>
               <View style={styles.memberAvatar}><Feather name="user" size={18} color="#176b63" /></View>
-              <Text style={styles.memberName}>{member.member_name}</Text>
-              <Text style={styles.memberRole}>{roleLabel(member.role)}</Text>
+              <Text style={[styles.memberName, { color: colors.heading }]}>{member.member_name}</Text>
+              <RoleBadge role={member.role} />
             </View>
           ))
         )}
       </View>
 
       {canInvite ? (
-        <View style={styles.invitePanel}>
-          <View style={styles.inviteIcon}><Feather name="user-plus" size={22} color="#176b63" /></View>
-          <Text style={styles.inviteTitle}>Invite family members</Text>
+        <View style={[styles.invitePanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.inviteIcon, { backgroundColor: `${colors.secondary}18` }]}><Feather name="user-plus" size={22} color={colors.secondary} /></View>
+          <Text style={[styles.inviteTitle, { color: colors.heading }]}>Invite family members</Text>
           <View style={styles.inviteHeading}>
-            <Text style={styles.body}>Create a private link. The link expires after seven days.</Text>
+            <Text style={[styles.body, { color: colors.body }]}>Create a private link. The link expires after seven days.</Text>
             <InfoButton title="Invitation link" message="Anyone with this link can open the invitation and request to join. They must sign in and enter the family password. Each link can be used once." />
           </View>
           {inviteUrl ? (
@@ -208,15 +200,14 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 22, paddingBottom: 48, gap: 16 },
   backButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' },
   backText: { color: '#176b63', fontSize: 15, fontWeight: '700' },
-  hero: { alignItems: 'center', paddingVertical: 22 },
+  hero: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 18, borderWidth: 1, borderRadius: 22 },
   groupIcon: { width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e4f0e8', marginBottom: 18 },
   title: { color: '#102c2a', fontSize: 28, fontWeight: '700', textAlign: 'center' },
+  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 9 },
   role: { color: '#64746f', fontSize: 14, marginTop: 7 },
+  heroSubtitle: { fontSize: 14, lineHeight: 20, textAlign: 'center', marginTop: 10 },
   memberPanel: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 17, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd' },
-  mediaAction: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd' },
-  mediaActionIcon: { width: 42, height: 42, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e4f0e8' },
-  mediaActionCopy: { flex: 1, gap: 3 },
-  mediaActionTitle: { color: '#102c2a', fontSize: 16, fontWeight: '700' },
+  actions: { gap: 10 },
   directoryPanel: { padding: 17, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd', gap: 10 },
   directoryTitle: { color: '#102c2a', fontSize: 17, fontWeight: '700', marginBottom: 2 },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 46, borderTopWidth: 1, borderTopColor: '#e7ede8', paddingTop: 9 },
