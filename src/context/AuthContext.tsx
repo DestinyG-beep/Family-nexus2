@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Appearance } from 'react-native';
+import { Appearance, Platform } from 'react-native';
 
 import { hasSupabaseConfig, requireSupabase, supabase } from '../lib/supabase';
 
@@ -101,7 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    Appearance.setColorScheme(themePreference === 'SYSTEM' ? 'unspecified' : themePreference.toLowerCase() as 'light' | 'dark');
+    if (Platform.OS !== 'web' && typeof Appearance.setColorScheme === 'function') {
+      Appearance.setColorScheme(themePreference === 'SYSTEM' ? 'unspecified' : themePreference.toLowerCase() as 'light' | 'dark');
+    }
   }, [themePreference]);
 
   const syncAuthState = async () => {
