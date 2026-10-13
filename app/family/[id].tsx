@@ -3,13 +3,13 @@ import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import InfoButton from '../../src/components/InfoButton';
 import ActionCard from '../../src/components/ActionCard';
 import RoleBadge from '../../src/components/RoleBadge';
 import { useAuth } from '../../src/context/AuthContext';
-import { ActiveFamilyMembership, FamilyMemberSummary, createFamilyInvitation, getActiveFamilyMemberships, getFamilyMemberDirectory } from '../../src/lib/familyService';
+import { ActiveFamilyMembership, FamilyMemberSummary, createFamilyInvitation, getActiveFamilyMemberships, getFamilyMemberDirectory, revokeFamilyInvitations } from '../../src/lib/familyService';
 import { useAppTheme } from '../../src/theme/useAppTheme';
 
 export default function FamilyDetailScreen() {
@@ -21,6 +21,7 @@ export default function FamilyDetailScreen() {
   const [membersUnavailable, setMembersUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [revoking, setRevoking] = useState(false);
   const { colors } = useAppTheme();
   const [inviteUrl, setInviteUrl] = useState('');
   const [copied, setCopied] = useState(false);
@@ -103,6 +104,24 @@ export default function FamilyDetailScreen() {
     }
   };
 
+  const revokeInvitation = (reset: boolean) => {
+    if (!id) return;
+    Alert.alert(reset ? 'Reset invitation link?' : 'Revoke invitation link?', reset ? 'The current link will stop working and a new reusable link will be created.' : 'Anyone with this link will no longer be able to use it.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: reset ? 'Reset link' : 'Revoke link', style: reset ? 'default' : 'destructive', onPress: () => void (async () => {
+        setRevoking(true); setError(''); setMessage('');
+        try {
+          await revokeFamilyInvitations(id);
+          setInviteUrl('');
+          if (reset) await makeInvitation();
+          else setMessage('Invitation link revoked.');
+        } catch (revokeError) {
+          setError(revokeError instanceof Error ? revokeError.message : 'The invitation link could not be changed.');
+        } finally { setRevoking(false); }
+      })() },
+    ]);
+  };
+
   if (loading) {
     return <View style={styles.loading}><ActivityIndicator color="#176b63" /><Text style={styles.body}>Loading family...</Text></View>;
   }
@@ -158,7 +177,7 @@ export default function FamilyDetailScreen() {
         ) : (
           members.map((member, index) => (
             <View key={`${member.member_name}-${index}`} style={styles.memberRow}>
-              <View style={styles.memberAvatar}><Feather name="user" size={18} color="#176b63" /></View>
+              {member.avatar_url ? <Image source={{ uri: member.avatar_url }} style={styles.memberAvatar} /> : <View style={styles.memberAvatar}><Feather name="user" size={18} color="#176b63" /></View>}
               <Text style={[styles.memberName, { color: colors.heading }]}>{member.member_name}</Text>
               <RoleBadge role={member.role} />
             </View>
@@ -171,15 +190,19 @@ export default function FamilyDetailScreen() {
           <View style={[styles.inviteIcon, { backgroundColor: `${colors.secondary}18` }]}><Feather name="user-plus" size={22} color={colors.secondary} /></View>
           <Text style={[styles.inviteTitle, { color: colors.heading }]}>Invite family members</Text>
           <View style={styles.inviteHeading}>
-            <Text style={[styles.body, { color: colors.body }]}>Create a private link. The link expires after seven days.</Text>
+            <Text style={[styles.body, { color: colors.body }]}>Share one reusable link. It expires after seven days and can be revoked at any time.</Text>
             <InfoButton title="Invitation link" message="Anyone with this link can open the invitation and request to join. They must sign in and enter the family password. Each link can be used once." />
           </View>
           {inviteUrl ? (
             <>
               <Text selectable accessibilityLabel="Invitation link" style={styles.inviteLink}>{inviteUrl}</Text>
-              <Pressable accessibilityRole="button" onPress={() => void copyInvitation()} style={styles.primaryButton}>
+              <Pressable accessibilityRole="button" disabled={revoking} onPress={() => void copyInvitation()} style={styles.primaryButton}>
                 <Text style={styles.primaryText}>{copied ? 'Copied' : 'Copy invite link'}</Text>
               </Pressable>
+              <View style={styles.inviteActions}>
+                <Pressable accessibilityRole="button" disabled={revoking} onPress={() => revokeInvitation(true)} style={styles.resetButton}><Feather name="refresh-cw" size={15} color="#a8503b" /><Text style={styles.resetText}>Reset link</Text></Pressable>
+                <Pressable accessibilityRole="button" disabled={revoking} onPress={() => revokeInvitation(false)} style={styles.revokeButton}><Feather name="x-circle" size={15} color="#a33e38" /><Text style={styles.revokeText}>Revoke</Text></Pressable>
+              </View>
             </>
           ) : (
             <Pressable accessibilityRole="button" onPress={() => void makeInvitation()} disabled={sharing} style={[styles.primaryButton, sharing && styles.disabled]}>
@@ -224,6 +247,11 @@ const styles = StyleSheet.create({
   inviteLink: { color: '#176b63', fontSize: 13, lineHeight: 20, padding: 11, borderRadius: 6, backgroundColor: '#f1f6f1' },
   primaryButton: { minHeight: 48, borderRadius: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#176b63', marginTop: 5 },
   primaryText: { color: '#ffffff', fontWeight: '700' },
+  inviteActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 2 },
+  resetButton: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  resetText: { color: '#a8503b', fontSize: 13, fontWeight: '800' },
+  revokeButton: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  revokeText: { color: '#a33e38', fontSize: 13, fontWeight: '800' },
   disabled: { opacity: 0.65 },
   success: { color: '#176b63', fontSize: 14, lineHeight: 20 },
   error: { color: '#9b332b', fontSize: 14, lineHeight: 20, textAlign: 'center' },

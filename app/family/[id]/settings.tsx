@@ -57,7 +57,7 @@ export default function FamilySettingsScreen() {
       <Text style={[styles.label, { color: colors.heading }]}>Family name</Text><TextInput editable={isOwner} value={name} onChangeText={setName} style={[styles.input, { color: colors.heading, borderColor: colors.border, backgroundColor: colors.surfaceMuted }]} />
       <Text style={[styles.label, { color: colors.heading }]}>Maximum members</Text><TextInput editable={isOwner} value={memberLimit} onChangeText={setMemberLimit} keyboardType="number-pad" style={[styles.input, { color: colors.heading, borderColor: colors.border, backgroundColor: colors.surfaceMuted }]} />
       <Text style={[styles.help, { color: colors.muted }]}>The limit cannot be lower than the current member count.</Text>
-      {!isOwner ? <Text style={[styles.notice, { color: colors.body, backgroundColor: colors.surfaceMuted }]}>Only the Family Owner can edit these settings.</Text> : null}
+      {!isOwner ? <Text style={[styles.notice, { color: colors.body, backgroundColor: colors.surfaceMuted }]}>Only the primary Admin can edit these settings.</Text> : null}
       {error ? <Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}{message ? <Text style={[styles.success, { color: colors.success }]}>{message}</Text> : null}
       {isOwner ? <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={[styles.primary, { backgroundColor: colors.primary }, saving && styles.disabled]}>{saving ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={[styles.primaryText, { color: colors.onPrimary }]}>Save family settings</Text>}</Pressable> : null}
     </Panel>

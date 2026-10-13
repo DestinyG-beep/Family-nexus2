@@ -171,7 +171,7 @@ export async function uploadFamilyMedia(input: MediaUploadInput) {
         });
 
         if (cancelError) {
-          throw new Error('The upload did not complete, and its temporary file could not be cleaned up. Ask a family administrator for help.');
+          throw new Error('The upload did not complete, and its temporary file could not be cleaned up. Ask a family Admin for help.');
         }
       }
 
@@ -190,7 +190,7 @@ export async function uploadFamilyMedia(input: MediaUploadInput) {
       });
 
       if (cancelError) {
-        throw new Error('The upload did not complete and its temporary record could not be cleaned up. Ask a family administrator for help.');
+        throw new Error('The upload did not complete and its temporary record could not be cleaned up. Ask a family Admin for help.');
       }
     }
 

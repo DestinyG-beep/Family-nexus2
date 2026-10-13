@@ -80,7 +80,7 @@ export default function InvitationRoute() {
       } else if (result.status === 'invitation_expired' || result.status === 'invitation_exhausted') {
         setError('This invitation has expired or has already been used. Ask for a new link.');
       } else if (result.status === 'restricted') {
-        setError('Your access to this family is restricted. Contact a family administrator.');
+        setError('Your access to this family is restricted. Contact a family Admin.');
       } else if (result.status === 'invalid_password') {
         setError('That family password is incorrect. Check it and try again.');
       } else {

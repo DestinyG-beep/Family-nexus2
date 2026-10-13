@@ -4,8 +4,7 @@ import { useAppTheme } from '../theme/useAppTheme';
 import { radii } from '../theme/tokens';
 
 export function roleLabel(role: string) {
-  if (role === 'SUPERADMIN') return 'Family Owner';
-  if (role === 'ADMIN') return 'Administrator';
+  if (role === 'SUPERADMIN' || role === 'ADMIN') return 'Admin';
   return 'Member';
 }
 

@@ -1,8 +1,12 @@
 import { Feather } from '@expo/vector-icons';
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import MemberAvatar from '../../src/components/MemberAvatar';
 import { useAuth } from '../../src/context/AuthContext';
+import { getProfileAvatarSignedUrl, uploadProfileAvatar } from '../../src/lib/avatarService';
 import { useAppTheme } from '../../src/theme/useAppTheme';
 
 export default function ProfileScreen() {
@@ -13,8 +17,49 @@ export default function ProfileScreen() {
   const [phone, setPhone] = useState(profile?.phone_number ?? '');
   const [residence, setResidence] = useState(profile?.residence ?? '');
   const [saving, setSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    if (!session?.id) return () => { active = false; };
+    setAvatarLoading(true);
+    void getProfileAvatarSignedUrl(session.id)
+      .then((result) => { if (active) setAvatarUrl(result?.signedUrl ?? null); })
+      .catch(() => { if (active) setAvatarUrl(null); })
+      .finally(() => { if (active) setAvatarLoading(false); });
+    return () => { active = false; };
+  }, [session]));
+
+  const chooseAvatar = async () => {
+    if (!session?.id || avatarUploading) return;
+    setAvatarUploading(true);
+    setError('');
+    setMessage('');
+    try {
+      if (Platform.OS !== 'web') {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) throw new Error('Allow photo access to choose a profile picture.');
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.85 });
+      if (result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      if (!response.ok) throw new Error('The selected picture could not be read.');
+      const blob = await response.blob();
+      const uploaded = await uploadProfileAvatar({ blob, mimeType: asset.mimeType || blob.type || 'image/jpeg' });
+      await updateProfile({ avatar_media_id: uploaded.avatarId });
+      setAvatarUrl(uploaded.signedUrl);
+      setMessage('Profile picture updated.');
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'The profile picture could not be updated.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const saveProfile = async () => {
     const trimmedName = name.trim();
@@ -52,7 +97,12 @@ export default function ProfileScreen() {
       <Text style={[styles.title, { color: colors.heading }]}>Profile</Text>
       <Text style={[styles.subtitle, { color: colors.body }]}>Keep your family directory details up to date.</Text>
 
-      <View style={[styles.avatar, { backgroundColor: `${colors.primary}20` }]}><Feather name="user" size={32} color={colors.primary} /></View>
+      <View style={styles.avatarWrap}>
+        {avatarLoading ? <View style={[styles.avatar, { backgroundColor: `${colors.primary}20` }]}><ActivityIndicator color={colors.primary} /></View> : avatarUrl ? <Image source={{ uri: avatarUrl }} style={styles.avatar} /> : <MemberAvatar name={name || session?.name || 'Family member'} size={82} />}
+        <Pressable accessibilityRole="button" disabled={avatarUploading} onPress={() => void chooseAvatar()} style={[styles.avatarAction, { backgroundColor: colors.surface, borderColor: colors.border }, avatarUploading && styles.disabled]}>
+          <Feather name="camera" size={15} color={colors.primary} /><Text style={[styles.avatarActionText, { color: colors.primary }]}>{avatarUploading ? 'Uploading...' : avatarUrl ? 'Change picture' : 'Add picture'}</Text>
+        </Pressable>
+      </View>
       <Text style={[styles.completion, { color: colors.secondary }]}>{isProfileComplete ? 'Profile complete' : 'Profile setup is incomplete'}</Text>
 
       <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -81,7 +131,10 @@ const styles = StyleSheet.create({
   eyebrow: { color: '#54726b', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
   title: { color: '#102c2a', fontSize: 29, fontWeight: '700', marginTop: 2 },
   subtitle: { color: '#65736f', fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  avatar: { width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', backgroundColor: '#e4f0e8', marginVertical: 8 },
+  avatarWrap: { alignItems: 'center', gap: 8, marginVertical: 8 },
+  avatar: { width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e4f0e8' },
+  avatarAction: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, borderWidth: 1, borderRadius: 999 },
+  avatarActionText: { fontSize: 12, fontWeight: '800' },
   completion: { color: '#176b63', fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
   formCard: { padding: 18, borderRadius: 8, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#dce5dd' },
   label: { color: '#315a53', fontSize: 13, fontWeight: '700', marginBottom: 6, marginTop: 8 },

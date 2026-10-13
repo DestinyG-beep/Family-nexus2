@@ -38,7 +38,7 @@ export default function FamilyJoinForm() {
           setError('This family has reached its maximum size and cannot accept new members.');
           return;
         case 'restricted':
-          setError('Your access to this family is restricted. Contact a family administrator.');
+          setError('Your access to this family is restricted. Contact a family Admin.');
           return;
         default:
           setError('We could not match that family and password. Check the details and try again.');
@@ -83,7 +83,7 @@ export default function FamilyJoinForm() {
 
           <View style={styles.fieldHeading}>
             <Text style={styles.label}>Family password</Text>
-            <InfoButton title="Family password" message="The family owner or administrator shares this password with trusted people. It is verified securely by the server and is never returned to the app. Invitation links also require this password to finish joining." />
+            <InfoButton title="Family password" message="A family Admin shares this password with trusted people. It is verified securely by the server and is never returned to the app. Invitation links also require this password to finish joining." />
           </View>
           <TextInput
             style={styles.input}

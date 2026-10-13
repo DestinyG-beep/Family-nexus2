@@ -1,6 +1,8 @@
 import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
+  ImageBackground,
   Pressable,
   Platform,
   ScrollView,
@@ -11,6 +13,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
+import { AUTH_BACKGROUND_IMAGE_URL } from '../config/branding';
 
 export default function AuthScreen({ nextPath }: { nextPath?: string }) {
   const { signIn, signUp } = useAuth();
@@ -20,6 +23,7 @@ export default function AuthScreen({ nextPath }: { nextPath?: string }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [backgroundFailed, setBackgroundFailed] = useState(false);
 
   const handleSubmit = async () => {
     if (mode === 'register' && !name.trim()) {
@@ -63,10 +67,10 @@ export default function AuthScreen({ nextPath }: { nextPath?: string }) {
     }
   };
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
+  const content = <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
-        <Text style={styles.title}>Family App</Text>
+        <View style={styles.mark}><Text style={styles.markText}>FN</Text></View>
+        <Text style={styles.title}>Family Nexus</Text>
         <Text style={styles.subtitle}>Welcome to the private family workspace.</Text>
 
         {mode === 'register' && (
@@ -100,7 +104,7 @@ export default function AuthScreen({ nextPath }: { nextPath?: string }) {
         />
 
         <Pressable style={styles.primaryButton} onPress={handleSubmit} disabled={loading}>
-          <Text style={styles.primaryButtonText}>{loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create account'}</Text>
+          {loading ? <ActivityIndicator color="#fffaf3" /> : <Text style={styles.primaryButtonText}>{mode === 'login' ? 'Login' : 'Create account'}</Text>}
         </Pressable>
 
         {message ? <Text accessibilityRole="alert" style={styles.message}>{message}</Text> : null}
@@ -111,19 +115,31 @@ export default function AuthScreen({ nextPath }: { nextPath?: string }) {
           </Text>
         </Pressable>
       </View>
-    </ScrollView>
-  );
+    </ScrollView>;
+
+  if (AUTH_BACKGROUND_IMAGE_URL && !backgroundFailed) {
+    return <ImageBackground source={{ uri: AUTH_BACKGROUND_IMAGE_URL }} onError={() => setBackgroundFailed(true)} style={styles.background} imageStyle={styles.backgroundImage}>
+      <View style={styles.overlay}>{content}</View>
+    </ImageBackground>;
+  }
+  return <View style={styles.fallback}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     justifyContent: 'center',
-    backgroundColor: '#eef2ff',
     padding: 24,
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
   },
+  background: { flex: 1, minHeight: '100%' },
+  backgroundImage: { opacity: 0.58 },
+  overlay: { flex: 1, minHeight: '100%', backgroundColor: 'rgba(35, 24, 19, 0.34)' },
+  fallback: { flex: 1, backgroundColor: '#f7f1e9' },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255, 253, 249, 0.95)',
     borderRadius: 24,
     padding: 24,
     shadowColor: '#000',
@@ -135,44 +151,46 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     marginBottom: 8,
-    color: '#0f172a',
+    color: '#2f2925',
   },
   subtitle: {
     fontSize: 16,
-    color: '#475569',
+    color: '#5f5750',
     marginBottom: 20,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#e7d9ca',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 14,
     fontSize: 16,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#fffaf3',
   },
   message: {
-    color: '#8b3d2f',
+    color: '#a33e38',
     marginTop: 12,
     textAlign: 'center',
   },
   primaryButton: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#a8503b',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: '#fffaf3',
     fontSize: 16,
     fontWeight: '600',
   },
   switchText: {
     marginTop: 18,
-    color: '#4338ca',
+    color: '#7e392e',
     textAlign: 'center',
     fontWeight: '600',
   },
+  mark: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#a8503b', marginBottom: 18 },
+  markText: { color: '#fffaf3', fontSize: 15, fontWeight: '900', letterSpacing: 1 },
 });

@@ -1,4 +1,5 @@
 import { requireSupabase } from './supabase';
+import { getSignedAvatarUrls } from './avatarService';
 
 export type FamilySummary = {
   name: string;
@@ -31,8 +32,10 @@ export type FamilyInvitationPreview = {
 };
 
 export type FamilyMemberSummary = {
+  member_id: string;
   member_name: string;
   role: string;
+  avatar_url: string | null;
 };
 
 export type FamilyAdminMember = {
@@ -43,6 +46,7 @@ export type FamilyAdminMember = {
   role: 'SUPERADMIN' | 'ADMIN' | 'MEMBER';
   status: 'ACTIVE' | 'RESTRICTED';
   joined_at: string;
+  avatar_url: string | null;
 };
 
 export type FamilySettings = {
@@ -149,7 +153,7 @@ export async function getFamilyInvitation(token: string) {
 }
 
 export async function joinFamilyWithInvitation(token: string, password: string) {
-  const { data, error } = await requireSupabase().rpc('join_family_with_invitation_password', {
+  const { data, error } = await requireSupabase().rpc('join_family_with_reusable_invitation_password', {
     p_token: token,
     p_password: password,
   });
@@ -157,7 +161,7 @@ export async function joinFamilyWithInvitation(token: string, password: string) 
   if (error) {
     console.warn('Invitation join failed', { code: error.code });
     if (error.code === 'PGRST202') {
-      throw new Error('Invitation joining is not available yet. Ask an administrator to finish setting it up.');
+      throw new Error('Invitation joining is not available yet. Ask a family Admin to finish setting it up.');
     }
     throw new Error('We could not complete this invitation. Try again later.');
   }
@@ -166,24 +170,31 @@ export async function joinFamilyWithInvitation(token: string, password: string) 
 }
 
 export async function createFamilyInvitation(familyId: string) {
-  const { data, error } = await requireSupabase().rpc('create_family_invitation', {
+  const { data, error } = await requireSupabase().rpc('create_reusable_family_invitation', {
     p_family_id: familyId,
     p_expires_in_days: 7,
-    p_max_uses: 1,
   });
 
   if (error) {
     console.warn('Invitation creation failed', { code: error.code });
     if (error.code === '42501') {
-      throw new Error('Only a family owner or administrator can create an invitation.');
+      throw new Error('Only a family Admin can create an invitation.');
     }
     if (error.code === 'PGRST202') {
-      throw new Error('Invitation links are not available yet. Ask an administrator to finish setting them up.');
+      throw new Error('Invitation links are not available yet. Ask a family Admin to finish setting them up.');
     }
     throw new Error('We could not create an invitation. Check your access and try again.');
   }
 
   return data as string;
+}
+
+export async function revokeFamilyInvitations(familyId: string) {
+  const { data, error } = await requireSupabase().rpc('revoke_family_invitations', { p_family_id: familyId });
+  if (error) {
+    throw new Error(error.message || 'The invitation link could not be revoked.');
+  }
+  return data as { status: 'revoked' };
 }
 
 export async function getFamilyMemberDirectory(familyId: string) {
@@ -194,7 +205,9 @@ export async function getFamilyMemberDirectory(familyId: string) {
     throw new Error('Family member details are temporarily unavailable.');
   }
 
-  return (data ?? []) as FamilyMemberSummary[];
+  const rows = (data ?? []) as (FamilyMemberSummary & { avatar_storage_key?: string | null })[];
+  const avatarUrls = await getSignedAvatarUrls(rows.flatMap((row) => row.avatar_storage_key ? [row.avatar_storage_key] : []));
+  return rows.map(({ avatar_storage_key, ...row }) => ({ ...row, avatar_url: avatar_storage_key ? avatarUrls.get(avatar_storage_key) ?? null : null }));
 }
 
 export async function getFamily(familyId: string) {
@@ -222,7 +235,9 @@ export async function getFamilySettings(familyId: string) {
 export async function getFamilyAdminMembers(familyId: string) {
   const { data, error } = await requireSupabase().rpc('get_family_admin_members', { p_family_id: familyId });
   if (error) throw new Error(error.message || 'Family members could not be loaded.');
-  return (data ?? []) as FamilyAdminMember[];
+  const rows = (data ?? []) as (FamilyAdminMember & { avatar_storage_key?: string | null })[];
+  const avatarUrls = await getSignedAvatarUrls(rows.flatMap((row) => row.avatar_storage_key ? [row.avatar_storage_key] : []));
+  return rows.map(({ avatar_storage_key, ...row }) => ({ ...row, avatar_url: avatar_storage_key ? avatarUrls.get(avatar_storage_key) ?? null : null }));
 }
 
 export async function updateFamilyMemberRole(familyId: string, memberId: string, role: 'ADMIN' | 'MEMBER') {
