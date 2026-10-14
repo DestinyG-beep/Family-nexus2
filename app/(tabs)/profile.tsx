@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import MemberAvatar from '../../src/components/MemberAvatar';
 import { useAuth } from '../../src/context/AuthContext';
@@ -10,7 +10,7 @@ import { getProfileAvatarSignedUrl, uploadProfileAvatar } from '../../src/lib/av
 import { useAppTheme } from '../../src/theme/useAppTheme';
 
 export default function ProfileScreen() {
-  const { session, profile, isLoading, isProfileComplete, updateProfile } = useAuth();
+  const { session, profile, isLoading, isProfileComplete, updateProfile, refreshProfile } = useAuth();
   const { colors } = useAppTheme();
   const [name, setName] = useState(profile?.name ?? session?.name ?? '');
   const [email, setEmail] = useState(profile?.email ?? session?.email ?? '');
@@ -52,6 +52,7 @@ export default function ProfileScreen() {
       const blob = await response.blob();
       const uploaded = await uploadProfileAvatar({ blob, mimeType: asset.mimeType || blob.type || 'image/jpeg' });
       await updateProfile({ avatar_media_id: uploaded.avatarId });
+      await refreshProfile();
       setAvatarUrl(uploaded.signedUrl);
       setMessage('Profile picture updated.');
     } catch (uploadError) {
@@ -98,7 +99,7 @@ export default function ProfileScreen() {
       <Text style={[styles.subtitle, { color: colors.body }]}>Keep your family directory details up to date.</Text>
 
       <View style={styles.avatarWrap}>
-        {avatarLoading ? <View style={[styles.avatar, { backgroundColor: `${colors.primary}20` }]}><ActivityIndicator color={colors.primary} /></View> : avatarUrl ? <Image source={{ uri: avatarUrl }} style={styles.avatar} /> : <MemberAvatar name={name || session?.name || 'Family member'} size={82} />}
+        {avatarLoading ? <View style={[styles.avatar, { backgroundColor: `${colors.primary}20` }]}><ActivityIndicator color={colors.primary} /></View> : <MemberAvatar key={avatarUrl ?? 'avatar-fallback'} name={name || session?.name || 'Family member'} imageUrl={avatarUrl} size={82} />}
         <Pressable accessibilityRole="button" disabled={avatarUploading} onPress={() => void chooseAvatar()} style={[styles.avatarAction, { backgroundColor: colors.surface, borderColor: colors.border }, avatarUploading && styles.disabled]}>
           <Feather name="camera" size={15} color={colors.primary} /><Text style={[styles.avatarActionText, { color: colors.primary }]}>{avatarUploading ? 'Uploading...' : avatarUrl ? 'Change picture' : 'Add picture'}</Text>
         </Pressable>

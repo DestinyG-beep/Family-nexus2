@@ -71,7 +71,11 @@ export async function uploadProfileAvatar(input: { blob: Blob; mimeType: string 
     const saved = (Array.isArray(completedData) ? completedData[0] : completedData) as { avatar_id?: string; storage_key?: string; previous_storage_key?: string | null } | undefined;
     if (!saved?.avatar_id || !saved.storage_key) throw new Error('The profile picture could not be saved.');
     if (saved.previous_storage_key) {
-      await client.storage.from(AVATAR_BUCKET).remove([saved.previous_storage_key]);
+      try {
+        await client.storage.from(AVATAR_BUCKET).remove([saved.previous_storage_key]);
+      } catch {
+        // The new avatar is valid even if cleanup of the previous object is deferred.
+      }
     }
     const { data: signed, error: signedError } = await client.storage.from(AVATAR_BUCKET).createSignedUrl(saved.storage_key, SIGNED_URL_TTL_SECONDS);
     if (signedError || !signed?.signedUrl) throw avatarSetupError(signedError, 'The profile picture could not be opened.');

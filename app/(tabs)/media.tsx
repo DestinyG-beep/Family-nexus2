@@ -338,12 +338,6 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      {familyIdOverride ? (
-        <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-          <Feather name="arrow-left" size={18} color={colors.primary} />
-          <Text style={[styles.backText, { color: colors.primary }]}>Family workspace</Text>
-        </Pressable>
-      ) : null}
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={[styles.eyebrow, { color: colors.primary }]}>YOUR FAMILY, TOGETHER</Text>

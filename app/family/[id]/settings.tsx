@@ -1,16 +1,15 @@
-import { Feather } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import Panel from '../../../src/components/Panel';
+import BackButton from '../../../src/components/BackButton';
 import SectionHeader from '../../../src/components/SectionHeader';
 import { useAuth } from '../../../src/context/AuthContext';
 import { ActiveFamilyMembership, FamilySettings, getActiveFamilyMemberships, getFamilySettings, updateFamilySettings } from '../../../src/lib/familyService';
 import { useAppTheme } from '../../../src/theme/useAppTheme';
 
 export default function FamilySettingsScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const { colors } = useAppTheme();
@@ -48,10 +47,10 @@ export default function FamilySettingsScreen() {
   };
 
   if (loading) return <View style={[styles.state, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.primary} /><Text style={[styles.body, { color: colors.body }]}>Loading family settings...</Text></View>;
-  if (!membership || !settings) return <View style={[styles.state, { backgroundColor: colors.background }]}><Text style={[styles.error, { color: colors.danger }]}>{error || 'Family settings are unavailable.'}</Text><Pressable onPress={() => router.back()} style={[styles.secondary, { borderColor: colors.border }]}><Text style={[styles.secondaryText, { color: colors.primary }]}>Back to family</Text></Pressable></View>;
+  if (!membership || !settings) return <View style={[styles.state, { backgroundColor: colors.background }]}><Text style={[styles.error, { color: colors.danger }]}>{error || 'Family settings are unavailable.'}</Text><BackButton label="Family workspace" fallback={`/family/${id}`} /></View>;
 
   return <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-    <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.back}><Feather name="arrow-left" size={18} color={colors.primary} /><Text style={[styles.backText, { color: colors.primary }]}>{settings.name}</Text></Pressable>
+    <BackButton label={settings.name} fallback={`/family/${id}`} />
     <SectionHeader eyebrow="FAMILY WORKSPACE" title="Family settings" subtitle={isOwner ? 'Shape the shared space for everyone.' : 'View the settings for this family space.'} />
     <Panel style={styles.formCard}>
       <Text style={[styles.label, { color: colors.heading }]}>Family name</Text><TextInput editable={isOwner} value={name} onChangeText={setName} style={[styles.input, { color: colors.heading, borderColor: colors.border, backgroundColor: colors.surfaceMuted }]} />

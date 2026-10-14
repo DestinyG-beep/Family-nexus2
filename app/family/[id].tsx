@@ -3,10 +3,12 @@ import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import InfoButton from '../../src/components/InfoButton';
 import ActionCard from '../../src/components/ActionCard';
+import BackButton from '../../src/components/BackButton';
+import MemberAvatar from '../../src/components/MemberAvatar';
 import RoleBadge from '../../src/components/RoleBadge';
 import { useAuth } from '../../src/context/AuthContext';
 import { ActiveFamilyMembership, FamilyMemberSummary, createFamilyInvitation, getActiveFamilyMemberships, getFamilyMemberDirectory, revokeFamilyInvitations } from '../../src/lib/familyService';
@@ -141,10 +143,7 @@ export default function FamilyDetailScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-        <Feather name="arrow-left" size={19} color={colors.primary} />
-        <Text style={[styles.backText, { color: colors.primary }]}>Home</Text>
-      </Pressable>
+      <BackButton label="Home" fallback="/(tabs)" />
 
       <View style={[styles.hero, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
         <View style={[styles.groupIcon, { backgroundColor: `${colors.primary}18` }]}><Feather name="users" size={34} color={colors.primary} /></View>
@@ -177,7 +176,7 @@ export default function FamilyDetailScreen() {
         ) : (
           members.map((member, index) => (
             <View key={`${member.member_name}-${index}`} style={styles.memberRow}>
-              {member.avatar_url ? <Image source={{ uri: member.avatar_url }} style={styles.memberAvatar} /> : <View style={styles.memberAvatar}><Feather name="user" size={18} color="#176b63" /></View>}
+              <MemberAvatar key={`${member.member_id}-${member.avatar_url ?? 'avatar-fallback'}`} name={member.member_name} imageUrl={member.avatar_url} size={34} />
               <Text style={[styles.memberName, { color: colors.heading }]}>{member.member_name}</Text>
               <RoleBadge role={member.role} />
             </View>

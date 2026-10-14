@@ -30,6 +30,7 @@ type AuthContextValue = {
   profile: ProfileRecord | null;
   isLoading: boolean;
   isProfileComplete: boolean;
+  refreshProfile: () => Promise<ProfileRecord | null>;
   themePreference: ThemePreference;
   setThemePreference: (preference: ThemePreference) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -260,6 +261,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return nextProfile;
   }, [session, profile]);
 
+  const refreshProfile = useCallback(async () => {
+    const userId = session?.id ?? (await requireSupabase().auth.getUser()).data.user?.id;
+    if (!userId) return null;
+    const nextProfile = await fetchProfile(userId);
+    setProfile(nextProfile);
+    setSession((current) => current && nextProfile ? { ...current, name: nextProfile.name ?? current.name, email: nextProfile.email ?? current.email } : current);
+    return nextProfile;
+  }, [session]);
+
   const signOut = async () => {
     if (!supabase) {
       throw new Error('Supabase is not configured.');
@@ -285,6 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       isLoading,
       isProfileComplete: !!profile?.profile_completed && !!profile?.name && profile.name.trim().length > 0,
+      refreshProfile,
       themePreference,
       setThemePreference,
       signIn,
@@ -292,7 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updateProfile,
       signOut,
     }),
-    [session, profile, isLoading, themePreference, updateProfile]
+    [session, profile, isLoading, themePreference, updateProfile, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

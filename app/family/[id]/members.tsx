@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import MemberAvatar from '../../../src/components/MemberAvatar';
+import BackButton from '../../../src/components/BackButton';
 import Panel from '../../../src/components/Panel';
 import RoleBadge from '../../../src/components/RoleBadge';
 import SectionHeader from '../../../src/components/SectionHeader';
@@ -12,7 +13,6 @@ import { ActiveFamilyMembership, FamilyAdminMember, getActiveFamilyMemberships, 
 import { useAppTheme } from '../../../src/theme/useAppTheme';
 
 export default function FamilyMembersScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const { colors } = useAppTheme();
@@ -67,10 +67,10 @@ export default function FamilyMembersScreen() {
   };
 
   if (loading) return <View style={[styles.state, { backgroundColor: colors.background }]}><ActivityIndicator color={colors.primary} /><Text style={[styles.muted, { color: colors.body }]}>Loading members...</Text></View>;
-  if (error && !membership) return <View style={[styles.state, { backgroundColor: colors.background }]}><Text style={[styles.error, { color: colors.danger }]}>{error}</Text><Pressable onPress={() => router.back()} style={[styles.secondaryButton, { borderColor: colors.border }]}><Text style={[styles.secondaryText, { color: colors.primary }]}>Back to family</Text></Pressable></View>;
+  if (error && !membership) return <View style={[styles.state, { backgroundColor: colors.background }]}><Text style={[styles.error, { color: colors.danger }]}>{error}</Text><BackButton label="Family workspace" fallback={`/family/${id}`} /></View>;
 
   return <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-    <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.back}><Feather name="arrow-left" size={18} color={colors.primary} /><Text style={[styles.backText, { color: colors.primary }]}>{familyName}</Text></Pressable>
+    <BackButton label={familyName} fallback={`/family/${id}`} />
     <SectionHeader eyebrow="FAMILY DIRECTORY" title="Members" subtitle={`${familyName} · ${members.length} active member${members.length === 1 ? '' : 's'}`} />
     {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
     <View style={styles.list}>{members.map((member) => {
@@ -78,7 +78,7 @@ export default function FamilyMembersScreen() {
       const canChange = canManage && !isSelf && member.role !== 'SUPERADMIN' && (membership?.role === 'SUPERADMIN' || member.role === 'MEMBER');
       const isBusy = busyId === member.id;
       return <Panel key={member.id} style={styles.memberCard}>
-        {member.avatar_url ? <Image source={{ uri: member.avatar_url }} style={styles.memberImage} /> : <MemberAvatar name={member.member_name} />}
+        <MemberAvatar key={`${member.id}-${member.avatar_url ?? 'avatar-fallback'}`} name={member.member_name} imageUrl={member.avatar_url} />
         <View style={styles.memberCopy}><Text style={[styles.memberName, { color: colors.heading }]}>{member.member_name}{isSelf ? ' (you)' : ''}</Text><Text style={[styles.email, { color: colors.muted }]}>{member.email || 'Email not available'}</Text><View style={styles.badges}><RoleBadge role={member.role} />{member.status === 'RESTRICTED' ? <View style={[styles.restricted, { backgroundColor: `${colors.warning}20` }]}><Text style={[styles.restrictedText, { color: colors.warning }]}>Restricted</Text></View> : null}</View></View>
         {canChange ? <View style={styles.actions}>{isBusy ? <ActivityIndicator color={colors.primary} /> : <><Pressable accessibilityRole="button" onPress={() => changeRole(member)} style={styles.iconButton}><Feather name={member.role === 'ADMIN' ? 'arrow-down-circle' : 'arrow-up-circle'} size={18} color={colors.secondary} /></Pressable><Pressable accessibilityRole="button" onPress={() => changeStatus(member, member.status === 'RESTRICTED' ? 'ACTIVE' : 'RESTRICTED')} style={styles.iconButton}><Feather name={member.status === 'RESTRICTED' ? 'unlock' : 'lock'} size={17} color={colors.warning} /></Pressable><Pressable accessibilityRole="button" onPress={() => changeStatus(member, 'REMOVED')} style={styles.iconButton}><Feather name="user-minus" size={17} color={colors.danger} /></Pressable></>}</View> : null}
       </Panel>;
