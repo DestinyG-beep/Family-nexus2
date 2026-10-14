@@ -12,6 +12,7 @@ as $$
 declare
   v_user_id uuid := auth.uid();
   v_token text := encode(gen_random_bytes(32), 'hex');
+  v_invitation_id uuid;
 begin
   if v_user_id is null then
     raise exception using errcode = '28000', message = 'Authentication required';
@@ -33,6 +34,14 @@ begin
 
   insert into public.family_invitations (family_id, created_by, token_hash, expires_at, max_uses, status)
   values (p_family_id, v_user_id, encode(digest(v_token, 'sha256'), 'hex'), now() + make_interval(days => p_expires_in_days), 2147483647, 'ACTIVE');
+
+  select id into v_invitation_id
+  from public.family_invitations
+  where family_id = p_family_id and token_hash = encode(digest(v_token, 'sha256'), 'hex');
+
+  insert into public.audit_logs (family_id, actor_id, action, target_type, target_id, metadata)
+  values (p_family_id, v_user_id, 'reusable_invitation_created', 'family_invitation', v_invitation_id,
+    jsonb_build_object('expires_in_days', p_expires_in_days));
 
   return v_token;
 end;
@@ -58,6 +67,8 @@ begin
 
   update public.family_invitations set status = 'REVOKED'
   where family_id = p_family_id and status = 'ACTIVE';
+  insert into public.audit_logs (family_id, actor_id, action, target_type, metadata)
+  values (p_family_id, auth.uid(), 'reusable_invitations_revoked', 'family_invitation', jsonb_build_object('family_id', p_family_id));
   return jsonb_build_object('status', 'revoked');
 end;
 $$;
@@ -89,7 +100,10 @@ begin
   if not found or v_invitation.max_uses <> 2147483647 then
     return jsonb_build_object('status', 'invalid_invitation');
   end if;
-  if v_invitation.status = 'REVOKED' then
+  if v_invitation.status <> 'ACTIVE' then
+    if v_invitation.status = 'EXPIRED' or v_invitation.expires_at <= now() then
+      return jsonb_build_object('status', 'invitation_expired');
+    end if;
     return jsonb_build_object('status', 'invalid_invitation');
   end if;
   if v_invitation.status = 'EXPIRED' or v_invitation.expires_at <= now() then
@@ -114,6 +128,9 @@ begin
   if found and v_existing.status = 'RESTRICTED' then
     return jsonb_build_object('status', 'restricted');
   end if;
+  if found and v_existing.status = 'REMOVED' then
+    return jsonb_build_object('status', 'membership_not_allowed');
+  end if;
 
   if length(p_password) < 8 or crypt(p_password, v_family.password_hash) <> v_family.password_hash then
     return jsonb_build_object('status', 'invalid_password');
@@ -133,7 +150,15 @@ begin
   else
     insert into public.family_members (family_id, user_id, role, status, joined_at, created_at, updated_at)
     values (v_family.id, v_user_id, 'MEMBER', 'ACTIVE', now(), now(), now());
+
+    select fm.id into v_existing.id
+    from public.family_members fm
+    where fm.family_id = v_family.id and fm.user_id = v_user_id;
   end if;
+
+  insert into public.audit_logs (family_id, actor_id, action, target_type, target_id, metadata)
+  values (v_family.id, v_user_id, 'joined_via_reusable_invitation', 'family_member', v_existing.id,
+    jsonb_build_object('invitation_id', v_invitation.id));
 
   return jsonb_build_object(
     'status', 'joined', 'family_id', v_family.id, 'family_name', v_family.name,

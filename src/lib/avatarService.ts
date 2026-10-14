@@ -56,6 +56,7 @@ export async function uploadProfileAvatar(input: { blob: Blob; mimeType: string 
     throw new Error('The profile picture upload could not be prepared.');
   }
 
+  let completed = false;
   try {
     const { error: uploadError } = await client.storage.from(AVATAR_BUCKET).upload(reservation.storage_key, input.blob, {
       cacheControl: '3600',
@@ -64,15 +65,19 @@ export async function uploadProfileAvatar(input: { blob: Blob; mimeType: string 
     });
     if (uploadError) throw avatarSetupError(uploadError, 'The profile picture could not be uploaded.');
 
-    const { data: completed, error: completeError } = await client.rpc('complete_profile_avatar_upload', { p_avatar_id: reservation.avatar_id });
+    const { data: completedData, error: completeError } = await client.rpc('complete_profile_avatar_upload', { p_avatar_id: reservation.avatar_id });
     if (completeError) throw avatarSetupError(completeError, 'The profile picture could not be saved.');
-    const saved = (Array.isArray(completed) ? completed[0] : completed) as { avatar_id?: string; storage_key?: string } | undefined;
+    completed = true;
+    const saved = (Array.isArray(completedData) ? completedData[0] : completedData) as { avatar_id?: string; storage_key?: string; previous_storage_key?: string | null } | undefined;
     if (!saved?.avatar_id || !saved.storage_key) throw new Error('The profile picture could not be saved.');
+    if (saved.previous_storage_key) {
+      await client.storage.from(AVATAR_BUCKET).remove([saved.previous_storage_key]);
+    }
     const { data: signed, error: signedError } = await client.storage.from(AVATAR_BUCKET).createSignedUrl(saved.storage_key, SIGNED_URL_TTL_SECONDS);
     if (signedError || !signed?.signedUrl) throw avatarSetupError(signedError, 'The profile picture could not be opened.');
     return { avatarId: saved.avatar_id, storageKey: saved.storage_key, signedUrl: signed.signedUrl };
   } catch (uploadFailure) {
-    await client.storage.from(AVATAR_BUCKET).remove([reservation.storage_key]);
+    if (!completed) await client.storage.from(AVATAR_BUCKET).remove([reservation.storage_key]);
     throw uploadFailure instanceof Error ? uploadFailure : new Error('The profile picture upload did not complete.');
   }
 }

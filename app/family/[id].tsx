@@ -165,7 +165,7 @@ export default function FamilyDetailScreen() {
         <ActionCard icon="image" title="Media" description="Browse and share private photos and videos." onPress={() => router.push(`/family/${id}/media` as never)} />
         <ActionCard icon="users" title="Members" description="See the people in this family space." accent="secondary" onPress={() => router.push(`/family/${id}/members` as never)} />
         <ActionCard icon="calendar" title="Calendar" description="Keep up with shared family events." accent="secondary" onPress={() => router.push('/calendar' as never)} />
-        {membership.role === 'SUPERADMIN' ? <ActionCard icon="settings" title="Family settings" description="Manage the shared name and member capacity." onPress={() => router.push(`/family/${id}/settings` as never)} /> : null}
+        {membership.role === 'SUPERADMIN' || membership.role === 'ADMIN' ? <ActionCard icon="settings" title="Family settings" description={membership.role === 'SUPERADMIN' ? 'Manage the shared name and member capacity.' : 'View the shared family settings.'} onPress={() => router.push(`/family/${id}/settings` as never)} /> : null}
       </View>
 
       <View style={[styles.directoryPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>

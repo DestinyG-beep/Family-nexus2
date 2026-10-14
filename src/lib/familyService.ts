@@ -18,7 +18,7 @@ export type ActiveFamilyMembership = {
 };
 
 export type FamilyOperationResult = {
-  status: 'joined' | 'already_member' | 'restricted' | 'family_full' | 'invalid_credentials' | 'invalid_invitation' | 'invalid_password' | 'invitation_expired' | 'invitation_exhausted';
+  status: 'joined' | 'already_member' | 'restricted' | 'membership_not_allowed' | 'family_full' | 'invalid_credentials' | 'invalid_invitation' | 'invalid_password' | 'invitation_expired' | 'invitation_exhausted';
   family_id?: string;
   family_name?: string;
   role?: 'MEMBER';
@@ -227,14 +227,20 @@ export async function getFamily(familyId: string) {
 
 export async function getFamilySettings(familyId: string) {
   const { data, error } = await requireSupabase().rpc('get_family_settings', { p_family_id: familyId });
-  if (error) throw new Error(error.message || 'Family settings could not be loaded.');
+  if (error) {
+    if (error.code === 'PGRST202') throw new Error('Family settings are not enabled yet. Apply migrations 007 and 008 in Supabase, then reload the schema cache.');
+    throw new Error(error.message || 'Family settings could not be loaded.');
+  }
   const row = Array.isArray(data) ? data[0] : data;
   return (row as FamilySettings | null) ?? null;
 }
 
 export async function getFamilyAdminMembers(familyId: string) {
   const { data, error } = await requireSupabase().rpc('get_family_admin_members', { p_family_id: familyId });
-  if (error) throw new Error(error.message || 'Family members could not be loaded.');
+  if (error) {
+    if (error.code === 'PGRST202') throw new Error('Family member management is not enabled yet. Apply migrations 007 and 008 in Supabase, then reload the schema cache.');
+    throw new Error(error.message || 'Family members could not be loaded.');
+  }
   const rows = (data ?? []) as (FamilyAdminMember & { avatar_storage_key?: string | null })[];
   const avatarUrls = await getSignedAvatarUrls(rows.flatMap((row) => row.avatar_storage_key ? [row.avatar_storage_key] : []));
   return rows.map(({ avatar_storage_key, ...row }) => ({ ...row, avatar_url: avatar_storage_key ? avatarUrls.get(avatar_storage_key) ?? null : null }));

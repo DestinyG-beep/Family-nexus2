@@ -39,8 +39,15 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if auth.uid() is null or not public.is_active_family_member(p_family_id, auth.uid()) then
-    raise exception using errcode = '42501', message = 'Active family membership required';
+  if auth.uid() is null then
+    raise exception using errcode = '28000', message = 'Authentication required';
+  end if;
+  if not exists (
+    select 1 from public.family_members fm
+    where fm.family_id = p_family_id and fm.user_id = auth.uid()
+      and fm.status = 'ACTIVE' and fm.role in ('SUPERADMIN', 'ADMIN')
+  ) then
+    raise exception using errcode = '42501', message = 'Family Admin access required';
   end if;
 
   return query
@@ -89,7 +96,7 @@ begin
   end if;
 
   if p_role is null or upper(trim(p_role)) not in ('ADMIN', 'MEMBER') then
-    raise exception using errcode = '22023', message = 'Only Administrator or Member roles are supported';
+    raise exception using errcode = '22023', message = 'Only Admin or Member roles are supported';
   end if;
 
   select * into v_target
@@ -102,11 +109,11 @@ begin
   end if;
 
   if v_target.user_id = auth.uid() or v_target.role = 'SUPERADMIN' then
-    raise exception using errcode = '42501', message = 'The family owner cannot be changed here';
+    raise exception using errcode = '42501', message = 'The primary Admin cannot be changed here';
   end if;
 
-  if v_actor.role = 'ADMIN' and v_target.role <> 'MEMBER' then
-    raise exception using errcode = '42501', message = 'Administrators can only manage Members';
+  if v_actor.role = 'ADMIN' and (v_target.role <> 'MEMBER' or upper(trim(p_role)) = 'ADMIN') then
+    raise exception using errcode = '42501', message = 'Admins can only manage Member status and demotion';
   end if;
 
   update public.family_members
@@ -165,11 +172,11 @@ begin
   end if;
 
   if v_target.user_id = auth.uid() or v_target.role = 'SUPERADMIN' then
-    raise exception using errcode = '42501', message = 'The family owner cannot be changed here';
+    raise exception using errcode = '42501', message = 'The primary Admin cannot be changed here';
   end if;
 
   if v_actor.role = 'ADMIN' and v_target.role <> 'MEMBER' then
-    raise exception using errcode = '42501', message = 'Administrators can only manage Members';
+    raise exception using errcode = '42501', message = 'Admins can only manage Members';
   end if;
 
   update public.family_members
@@ -211,7 +218,7 @@ begin
   for update;
 
   if not found or v_family.owner_id <> auth.uid() then
-    raise exception using errcode = '42501', message = 'Only the Family Owner can edit family settings';
+    raise exception using errcode = '42501', message = 'Only the primary Admin can edit family settings';
   end if;
 
   select count(*)::integer into v_active_count

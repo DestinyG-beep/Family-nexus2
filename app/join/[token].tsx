@@ -81,6 +81,8 @@ export default function InvitationRoute() {
         setError('This invitation has expired or has already been used. Ask for a new link.');
       } else if (result.status === 'restricted') {
         setError('Your access to this family is restricted. Contact a family Admin.');
+      } else if (result.status === 'membership_not_allowed') {
+        setError('Your previous membership was removed by a family Admin. Contact an Admin if access should be restored.');
       } else if (result.status === 'invalid_password') {
         setError('That family password is incorrect. Check it and try again.');
       } else {
