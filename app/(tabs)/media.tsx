@@ -1,6 +1,8 @@
 import { Feather } from '@expo/vector-icons';
+import { File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
+import * as Sharing from 'expo-sharing';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -20,7 +22,9 @@ import { ActiveFamilyMembership, getActiveFamilyMemberships } from '../../src/li
 import {
   deleteFamilyMedia,
   FamilyMediaItem,
+  getFamilyMediaDownloadUrl,
   getFamilyMediaSignedUrl,
+  getSupportedFamilyMediaType,
   listFamilyMedia,
   setMediaLike,
   setMediaPinned,
@@ -29,6 +33,15 @@ import {
 import { useAppTheme } from '../../src/theme/useAppTheme';
 
 type MediaFilter = 'IMAGE' | 'VIDEO';
+type UploadQueueStatus = 'queued' | 'uploading' | 'completed' | 'failed';
+type UploadQueueItem = {
+  id: string;
+  asset: ImagePicker.ImagePickerAsset;
+  fileName: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  status: UploadQueueStatus;
+  error?: string;
+};
 
 export type MediaScreenProps = {
   familyIdOverride?: string;
@@ -80,6 +93,13 @@ function formatFileSize(size: number | null) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function downloadFileName(item: FamilyMediaItem) {
+  const fallbackExtension = item.media_type === 'IMAGE' ? 'jpg' : 'mp4';
+  const original = (item.file_name || '').trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+  if (original) return original;
+  return `family-${item.media_type.toLowerCase()}-${item.id}.${fallbackExtension}`;
+}
+
 export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
   const router = useRouter();
   const { session } = useAuth();
@@ -98,6 +118,7 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
   const [galleryError, setGalleryError] = useState('');
   const [uploadMessage, setUploadMessage] = useState('');
   const [detailError, setDetailError] = useState('');
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -205,6 +226,68 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
     }
   };
 
+  const setQueueItem = (id: string, update: Partial<UploadQueueItem>) => {
+    setUploadQueue((current) => current.map((item) => item.id === id ? { ...item, ...update } : item));
+  };
+
+  const uploadQueueItems = async (queueItems: UploadQueueItem[]) => {
+    if (!currentFamily || queueItems.length === 0) return;
+    setUploading(true);
+    let nextIndex = 0;
+    let successful = 0;
+    let failed = 0;
+
+    const worker = async () => {
+      while (nextIndex < queueItems.length) {
+        const item = queueItems[nextIndex++];
+        setQueueItem(item.id, { status: 'uploading', error: undefined });
+        try {
+          if (item.asset.fileSize && item.asset.fileSize > 50 * 1024 * 1024) {
+            throw new Error('This file is larger than the 50 MB media limit.');
+          }
+
+          const blob = item.asset.file ?? await (await fetch(item.asset.uri)).blob();
+          const mimeType = getAssetMimeType(item.asset, blob);
+          const mediaType = getSupportedFamilyMediaType(mimeType);
+          if (!mediaType) throw new Error('This file format is not supported. Choose an image or video file.');
+
+          await uploadFamilyMedia({
+            familyId: currentFamily.family_id,
+            mediaType,
+            mimeType,
+            fileName: item.fileName,
+            blob,
+            width: item.asset.width || undefined,
+            height: item.asset.height || undefined,
+            durationSeconds: item.asset.duration ? Math.round(item.asset.duration / 1000) : undefined,
+          });
+          successful += 1;
+          setQueueItem(item.id, { status: 'completed' });
+        } catch (error) {
+          failed += 1;
+          setQueueItem(item.id, { status: 'failed', error: error instanceof Error ? error.message : 'Upload failed.' });
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(2, queueItems.length) }, () => worker()));
+    setUploading(false);
+    setUploadMessage(`${successful} uploaded successfully. ${failed} failed.`);
+
+    if (successful > 0) {
+      try {
+        await refreshGallery(currentFamily.family_id);
+      } catch {
+        setGalleryError('Uploads completed, but the gallery could not refresh. Use Refresh to load the latest media.');
+      }
+    }
+  };
+
+  const retryUpload = (id: string) => {
+    const item = uploadQueue.find((queueItem) => queueItem.id === id);
+    if (item && !uploading) void uploadQueueItems([{ ...item, status: 'queued', error: undefined }]);
+  };
+
   const startUpload = async () => {
     if (!currentFamily || uploading) return;
     setUploadMessage('');
@@ -220,49 +303,24 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
       }
 
       const pickerResult = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: filter === 'IMAGE' ? ['images'] : ['videos'],
-        allowsMultipleSelection: false,
+        mediaTypes: ['images', 'videos'],
+        allowsMultipleSelection: true,
+        selectionLimit: 0,
         quality: 1,
       });
 
-      if (pickerResult.canceled || !pickerResult.assets[0]) return;
-      const asset = pickerResult.assets[0];
-      setUploading(true);
-
-      const response = await fetch(asset.uri);
-      if (!response.ok) {
-        throw new Error('The selected file could not be read. Choose it again and retry.');
-      }
-
-      const blob = await response.blob();
-      const mimeType = getAssetMimeType(asset, blob);
-      if (!mimeType.startsWith(filter === 'IMAGE' ? 'image/' : 'video/')) {
-        throw new Error(`Choose a supported ${filter === 'IMAGE' ? 'image' : 'video'} file.`);
-      }
-
-      const mediaType = filter;
-      const fileName = asset.fileName || fileNameFromUri(asset.uri) || (mediaType === 'IMAGE' ? 'Family photo' : 'Family video');
-      await uploadFamilyMedia({
-        familyId: currentFamily.family_id,
-        mediaType,
-        mimeType,
-        fileName,
-        blob,
-        width: asset.width || undefined,
-        height: asset.height || undefined,
-        durationSeconds: asset.duration ? Math.round(asset.duration / 1000) : undefined,
-      });
-
-      try {
-        await refreshGallery(currentFamily.family_id);
-        setUploadMessage('Added to family media.');
-      } catch {
-        setGalleryError('The upload completed, but the gallery could not refresh. Use Refresh to load the latest media.');
-      }
+      if (pickerResult.canceled || pickerResult.assets.length === 0) return;
+      const queueItems = pickerResult.assets.map((asset, index) => ({
+        id: `${asset.uri}-${index}`,
+        asset,
+        fileName: asset.fileName || fileNameFromUri(asset.uri) || `Family ${asset.type === 'video' ? 'video' : 'photo'}`,
+        mediaType: asset.type === 'video' ? 'VIDEO' as const : 'IMAGE' as const,
+        status: 'queued' as const,
+      }));
+      setUploadQueue(queueItems);
+      void uploadQueueItems(queueItems);
     } catch (error) {
       setGalleryError(error instanceof Error ? error.message : 'The upload did not complete. Try again.');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -333,6 +391,37 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
       await Linking.openURL(signedUrl);
     } catch (error) {
       setDetailError(error instanceof Error ? error.message : 'This video could not be opened.');
+    }
+  };
+
+  const downloadSelected = async () => {
+    if (!selectedItem || busyAction) return;
+    setBusyAction(true);
+    setDetailError('');
+    try {
+      const signedUrl = await getFamilyMediaDownloadUrl(selectedItem);
+      const fileName = downloadFileName(selectedItem);
+      if (Platform.OS === 'web') {
+        const anchor = document.createElement('a');
+        anchor.href = signedUrl;
+        anchor.download = fileName;
+        anchor.rel = 'noreferrer';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      } else {
+        const destination = new File(Paths.cache, fileName);
+        const downloaded = await File.downloadFileAsync(signedUrl, destination, { idempotent: true });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloaded.uri, { dialogTitle: `Share ${fileName}`, mimeType: selectedItem.mime_type });
+        } else {
+          await Linking.openURL(downloaded.uri);
+        }
+      }
+    } catch {
+      setDetailError('This media could not be downloaded. Try again.');
+    } finally {
+      setBusyAction(false);
     }
   };
 
@@ -506,6 +595,25 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
 
       {uploadMessage ? <Text style={styles.successText}>{uploadMessage}</Text> : null}
 
+      {uploadQueue.length > 0 ? (
+        <View style={styles.queuePanel}>
+          <View style={styles.queueHeader}>
+            <Text style={styles.queueTitle}>Upload queue</Text>
+            <Text style={styles.queueProgress}>{uploadQueue.filter((item) => item.status === 'completed').length} of {uploadQueue.length} complete</Text>
+          </View>
+          {uploadQueue.map((item) => (
+            <View key={item.id} style={styles.queueItem}>
+              <Feather name={item.mediaType === 'IMAGE' ? 'image' : 'video'} size={17} color="#176b63" />
+              <Text numberOfLines={1} style={styles.queueName}>{item.fileName}</Text>
+              {item.status === 'queued' ? <Text style={styles.queueStatus}>Waiting…</Text> : null}
+              {item.status === 'uploading' ? <Text style={styles.queueStatus}>Uploading…</Text> : null}
+              {item.status === 'completed' ? <Feather name="check" size={18} color="#39745c" /> : null}
+              {item.status === 'failed' ? <><Text numberOfLines={1} style={styles.queueFailed}>{item.error || 'Failed'}</Text><Pressable accessibilityRole="button" disabled={uploading} onPress={() => retryUpload(item.id)} style={styles.queueRetry}><Text style={styles.queueRetryText}>Retry</Text></Pressable></> : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       <MediaDetailModal
         item={selectedItem}
         visible={!!selectedItem}
@@ -530,6 +638,7 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
           () => setMediaPinned(selectedItem.id, selectedItem.is_pinned),
           (item) => ({ ...item, is_pinned: !item.is_pinned })
         )}
+        onDownload={() => void downloadSelected()}
         onRequestDelete={() => setConfirmingDelete(true)}
         onCancelDelete={() => setConfirmingDelete(false)}
         onConfirmDelete={() => void confirmDelete()}
@@ -595,4 +704,14 @@ const styles = StyleSheet.create({
   mediaSize: { color: '#71817c', fontSize: 12 },
   likeCount: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   successText: { color: '#176b63', fontSize: 13, fontWeight: '600' },
+  queuePanel: { gap: 8, padding: 14, borderRadius: 9, borderWidth: 1, borderColor: '#dce5dd', backgroundColor: '#ffffff' },
+  queueHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  queueTitle: { color: '#203a36', fontSize: 15, fontWeight: '700' },
+  queueProgress: { color: '#65736f', fontSize: 12 },
+  queueItem: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  queueName: { flex: 1, minWidth: 0, color: '#435a54', fontSize: 13 },
+  queueStatus: { color: '#65736f', fontSize: 12 },
+  queueFailed: { maxWidth: 150, color: '#a43d37', fontSize: 12 },
+  queueRetry: { minHeight: 32, justifyContent: 'center', paddingHorizontal: 9, borderRadius: 6, backgroundColor: '#fff0ee' },
+  queueRetryText: { color: '#a43d37', fontSize: 12, fontWeight: '700' },
 });

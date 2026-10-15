@@ -3,6 +3,8 @@ import { requireSupabase } from './supabase';
 const MEDIA_BUCKET = 'family-media';
 const SIGNED_URL_TTL_SECONDS = 300;
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const SUPPORTED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/avif']);
+const SUPPORTED_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp', 'video/3gpp2']);
 
 export type FamilyMediaItem = {
   id: string;
@@ -35,6 +37,13 @@ export type MediaUploadInput = {
   height?: number;
   durationSeconds?: number;
 };
+
+export function getSupportedFamilyMediaType(mimeType: string): 'IMAGE' | 'VIDEO' | null {
+  const normalized = mimeType.toLowerCase();
+  if (SUPPORTED_IMAGE_MIME_TYPES.has(normalized)) return 'IMAGE';
+  if (SUPPORTED_VIDEO_MIME_TYPES.has(normalized)) return 'VIDEO';
+  return null;
+}
 
 function mediaSetupError(error: { code?: string; message?: string }, fallback: string) {
   if (error.code === 'PGRST202' || /bucket not found|does not exist/i.test(error.message ?? '')) {
@@ -95,6 +104,14 @@ export async function getFamilyMediaSignedUrl(storageKey: string) {
   }
 
   return data.signedUrl;
+}
+
+export async function getFamilyMediaDownloadUrl(item: Pick<FamilyMediaItem, 'bucket' | 'storage_key'>) {
+  if (item.bucket !== MEDIA_BUCKET || !item.storage_key) {
+    throw new Error('This media has an unsupported storage location.');
+  }
+
+  return getFamilyMediaSignedUrl(item.storage_key);
 }
 
 export async function uploadFamilyMedia(input: MediaUploadInput) {

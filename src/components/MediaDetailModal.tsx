@@ -14,6 +14,7 @@ type Props = {
   onClose: () => void;
   onLike: () => void;
   onPin: () => void;
+  onDownload: () => void;
   onRequestDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
@@ -37,6 +38,7 @@ export default function MediaDetailModal({
   onClose,
   onLike,
   onPin,
+  onDownload,
   onRequestDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -91,6 +93,10 @@ export default function MediaDetailModal({
                 <Text style={styles.actionText}>{item.is_pinned ? 'Unpin' : 'Pin'}</Text>
               </Pressable>
             ) : null}
+            <Pressable accessibilityRole="button" disabled={busy} onPress={onDownload} style={[styles.actionButton, busy && styles.disabled]}>
+              <Feather name="download" size={18} color="#176b63" />
+              <Text style={styles.actionText}>{busy ? 'Preparing…' : 'Download'}</Text>
+            </Pressable>
             {canDelete ? (
               <Pressable accessibilityRole="button" disabled={busy} onPress={onRequestDelete} style={[styles.actionButton, styles.deleteAction, busy && styles.disabled]}>
                 <Feather name="trash-2" size={17} color="#a43d37" />

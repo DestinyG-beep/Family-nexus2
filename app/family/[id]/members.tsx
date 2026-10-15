@@ -9,7 +9,8 @@ import Panel from '../../../src/components/Panel';
 import RoleBadge from '../../../src/components/RoleBadge';
 import SectionHeader from '../../../src/components/SectionHeader';
 import { useAuth } from '../../../src/context/AuthContext';
-import { ActiveFamilyMembership, FamilyAdminMember, getActiveFamilyMemberships, getFamilyAdminMembers, setFamilyMemberStatus, updateFamilyMemberRole } from '../../../src/lib/familyService';
+import { ActiveFamilyMembership, FamilyAdminMember, FamilyMemberSummary, getActiveFamilyMemberships, getFamilyAdminMembers, getFamilyMemberDirectory, setFamilyMemberStatus, updateFamilyMemberRole } from '../../../src/lib/familyService';
+import { canChangeMemberRole, canManageMember, isFamilyAdmin } from '../../../src/lib/familyRoles';
 import { useAppTheme } from '../../../src/theme/useAppTheme';
 
 export default function FamilyMembersScreen() {
@@ -17,7 +18,7 @@ export default function FamilyMembersScreen() {
   const { session } = useAuth();
   const { colors } = useAppTheme();
   const [membership, setMembership] = useState<ActiveFamilyMembership | null>(null);
-  const [members, setMembers] = useState<FamilyAdminMember[]>([]);
+  const [members, setMembers] = useState<(FamilyAdminMember | FamilyMemberSummary)[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +32,7 @@ export default function FamilyMembersScreen() {
       const current = memberships.find((item) => item.family_id === id) ?? null;
       setMembership(current);
       if (!current) throw new Error('You do not have access to this family.');
-      setMembers(await getFamilyAdminMembers(id));
+      setMembers(isFamilyAdmin(current.role) ? await getFamilyAdminMembers(id) : await getFamilyMemberDirectory(id));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Family members could not be loaded.');
     } finally {
@@ -41,7 +42,7 @@ export default function FamilyMembersScreen() {
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
-  const canManage = membership?.role === 'SUPERADMIN' || membership?.role === 'ADMIN';
+  const canManage = isFamilyAdmin(membership?.role);
   const familyName = membership?.families?.name ?? 'Family workspace';
 
   const changeRole = (member: FamilyAdminMember) => {
@@ -74,13 +75,17 @@ export default function FamilyMembersScreen() {
     <SectionHeader eyebrow="FAMILY DIRECTORY" title="Members" subtitle={`${familyName} · ${members.length} active member${members.length === 1 ? '' : 's'}`} />
     {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
     <View style={styles.list}>{members.map((member) => {
-      const isSelf = member.user_id === session?.id;
-      const canChange = canManage && !isSelf && member.role !== 'SUPERADMIN' && (membership?.role === 'SUPERADMIN' || member.role === 'MEMBER');
-      const isBusy = busyId === member.id;
-      return <Panel key={member.id} style={styles.memberCard}>
-        <MemberAvatar key={`${member.id}-${member.avatar_url ?? 'avatar-fallback'}`} name={member.member_name} imageUrl={member.avatar_url} />
-        <View style={styles.memberCopy}><Text style={[styles.memberName, { color: colors.heading }]}>{member.member_name}{isSelf ? ' (you)' : ''}</Text><Text style={[styles.email, { color: colors.muted }]}>{member.email || 'Email not available'}</Text><View style={styles.badges}><RoleBadge role={member.role} />{member.status === 'RESTRICTED' ? <View style={[styles.restricted, { backgroundColor: `${colors.warning}20` }]}><Text style={[styles.restrictedText, { color: colors.warning }]}>Restricted</Text></View> : null}</View></View>
-        {canChange ? <View style={styles.actions}>{isBusy ? <ActivityIndicator color={colors.primary} /> : <><Pressable accessibilityRole="button" onPress={() => changeRole(member)} style={styles.iconButton}><Feather name={member.role === 'ADMIN' ? 'arrow-down-circle' : 'arrow-up-circle'} size={18} color={colors.secondary} /></Pressable><Pressable accessibilityRole="button" onPress={() => changeStatus(member, member.status === 'RESTRICTED' ? 'ACTIVE' : 'RESTRICTED')} style={styles.iconButton}><Feather name={member.status === 'RESTRICTED' ? 'unlock' : 'lock'} size={17} color={colors.warning} /></Pressable><Pressable accessibilityRole="button" onPress={() => changeStatus(member, 'REMOVED')} style={styles.iconButton}><Feather name="user-minus" size={17} color={colors.danger} /></Pressable></>}</View> : null}
+      const adminMember = canManage ? member as FamilyAdminMember : null;
+      const memberId = adminMember?.id ?? (member as FamilyMemberSummary).member_id;
+      const memberUserId = adminMember?.user_id;
+      const isSelf = memberUserId === session?.id;
+      const canChange = !!adminMember && !!memberUserId && canManageMember(membership?.role, member.role, memberUserId, session?.id);
+      const canChangeRole = !!adminMember && !!memberUserId && canChangeMemberRole(membership?.role, member.role, memberUserId, session?.id);
+      const isBusy = busyId === memberId;
+      return <Panel key={memberId} style={styles.memberCard}>
+        <MemberAvatar key={`${memberId}-${member.avatar_url ?? 'avatar-fallback'}`} name={member.member_name} imageUrl={member.avatar_url} />
+        <View style={styles.memberCopy}><Text style={[styles.memberName, { color: colors.heading }]}>{member.member_name}{isSelf ? ' (you)' : ''}</Text>{adminMember ? <Text style={[styles.email, { color: colors.muted }]}>{adminMember.email || 'Email not available'}</Text> : null}<View style={styles.badges}><RoleBadge role={member.role} />{adminMember?.status === 'RESTRICTED' ? <View style={[styles.restricted, { backgroundColor: `${colors.warning}20` }]}><Text style={[styles.restrictedText, { color: colors.warning }]}>Restricted</Text></View> : null}</View></View>
+        {canChange && adminMember ? <View style={styles.actions}>{isBusy ? <ActivityIndicator color={colors.primary} /> : <>{canChangeRole ? <Pressable accessibilityRole="button" onPress={() => changeRole(adminMember)} style={styles.iconButton}><Feather name={member.role === 'ADMIN' ? 'arrow-down-circle' : 'arrow-up-circle'} size={18} color={colors.secondary} /></Pressable> : null}<Pressable accessibilityRole="button" onPress={() => changeStatus(adminMember, adminMember.status === 'RESTRICTED' ? 'ACTIVE' : 'RESTRICTED')} style={styles.iconButton}><Feather name={adminMember.status === 'RESTRICTED' ? 'unlock' : 'lock'} size={17} color={colors.warning} /></Pressable><Pressable accessibilityRole="button" onPress={() => changeStatus(adminMember, 'REMOVED')} style={styles.iconButton}><Feather name="user-minus" size={17} color={colors.danger} /></Pressable></>}</View> : null}
       </Panel>;
     })}</View>
   </ScrollView>;

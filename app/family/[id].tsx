@@ -12,6 +12,7 @@ import MemberAvatar from '../../src/components/MemberAvatar';
 import RoleBadge from '../../src/components/RoleBadge';
 import { useAuth } from '../../src/context/AuthContext';
 import { ActiveFamilyMembership, FamilyMemberSummary, createFamilyInvitation, getActiveFamilyMemberships, getFamilyMemberDirectory, revokeFamilyInvitations } from '../../src/lib/familyService';
+import { isFamilyAdmin, isPrimaryFamilyAdmin } from '../../src/lib/familyRoles';
 import { useAppTheme } from '../../src/theme/useAppTheme';
 
 export default function FamilyDetailScreen() {
@@ -139,7 +140,8 @@ export default function FamilyDetailScreen() {
     );
   }
 
-  const canInvite = membership.role === 'SUPERADMIN' || membership.role === 'ADMIN';
+  const canInvite = isFamilyAdmin(membership.role);
+  const isPrimaryAdmin = isPrimaryFamilyAdmin(membership.role);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
@@ -164,7 +166,7 @@ export default function FamilyDetailScreen() {
         <ActionCard icon="image" title="Media" description="Browse and share private photos and videos." onPress={() => router.push(`/family/${id}/media` as never)} />
         <ActionCard icon="users" title="Members" description="See the people in this family space." accent="secondary" onPress={() => router.push(`/family/${id}/members` as never)} />
         <ActionCard icon="calendar" title="Calendar" description="Keep up with shared family events." accent="secondary" onPress={() => router.push('/calendar' as never)} />
-        {membership.role === 'SUPERADMIN' || membership.role === 'ADMIN' ? <ActionCard icon="settings" title="Family settings" description={membership.role === 'SUPERADMIN' ? 'Manage the shared name and member capacity.' : 'View the shared family settings.'} onPress={() => router.push(`/family/${id}/settings` as never)} /> : null}
+        {isFamilyAdmin(membership.role) ? <ActionCard icon="settings" title="Family settings" description={isPrimaryAdmin ? 'Manage the shared name and member capacity.' : 'View the shared family settings.'} onPress={() => router.push(`/family/${id}/settings` as never)} /> : null}
       </View>
 
       <View style={[styles.directoryPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>

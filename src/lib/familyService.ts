@@ -276,3 +276,31 @@ export async function updateFamilySettings(input: { familyId: string; name: stri
   const row = Array.isArray(data) ? data[0] : data;
   return row as FamilySettings;
 }
+
+function familyPasswordError(error: { code?: string; message?: string }, fallback: string) {
+  if (error.code === '28000') return new Error('Authentication required.');
+  if (error.code === '42501') return new Error('Only the primary Admin can manage the family password.');
+  if (error.message === 'Family unavailable') return new Error('Family unavailable.');
+  if (error.message === 'Current family password is incorrect') return new Error('Current family password is incorrect.');
+  if (error.message === 'Family password must be at least 8 characters long') return new Error('Family password must be at least 8 characters long.');
+  return new Error(fallback);
+}
+
+export async function changeFamilyPassword(input: { familyId: string; currentPassword: string; newPassword: string }) {
+  const { data, error } = await requireSupabase().rpc('change_family_password', {
+    p_family_id: input.familyId,
+    p_current_password: input.currentPassword,
+    p_new_password: input.newPassword,
+  });
+  if (error) throw familyPasswordError(error, 'Family password could not be changed.');
+  return data as { status: 'updated' };
+}
+
+export async function resetFamilyPassword(input: { familyId: string; newPassword: string }) {
+  const { data, error } = await requireSupabase().rpc('reset_family_password', {
+    p_family_id: input.familyId,
+    p_new_password: input.newPassword,
+  });
+  if (error) throw familyPasswordError(error, 'Family password could not be reset.');
+  return data as { status: 'reset' };
+}
