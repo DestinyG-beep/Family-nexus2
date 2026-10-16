@@ -2,6 +2,7 @@ import { requireSupabase } from './supabase';
 
 const MEDIA_BUCKET = 'family-media';
 const SIGNED_URL_TTL_SECONDS = 300;
+export const FAMILY_MEDIA_PAGE_SIZE = 30;
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const SUPPORTED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/avif']);
 const SUPPORTED_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp', 'video/3gpp2']);
@@ -57,20 +58,12 @@ function mediaSetupError(error: { code?: string; message?: string }, fallback: s
   return new Error(fallback);
 }
 
-export async function listFamilyMedia(familyId: string): Promise<FamilyMediaItem[]> {
+async function signMediaRows(rows: Omit<FamilyMediaItem, 'signed_url'>[]) {
+  if (rows.length === 0) return [];
   const client = requireSupabase();
-  const { data, error } = await client.rpc('get_family_media', { p_family_id: familyId });
-
-  if (error) {
-    throw mediaSetupError(error, 'Family media could not be loaded. Check your connection and try again.');
-  }
-
-  const rows = (data ?? []) as Omit<FamilyMediaItem, 'signed_url'>[];
   if (rows.some((item) => item.bucket !== MEDIA_BUCKET)) {
     throw new Error('A media item has an unsupported storage location.');
   }
-
-  if (rows.length === 0) return [];
 
   const { data: signedUrls, error: signedError } = await client.storage
     .from(MEDIA_BUCKET)
@@ -92,6 +85,34 @@ export async function listFamilyMedia(familyId: string): Promise<FamilyMediaItem
 
     return { ...item, signed_url: signed.signedUrl };
   });
+}
+
+export async function listFamilyMediaPage(familyId: string, cursor?: { createdAt: string; id: string }) {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc('get_family_media_page', {
+    p_family_id: familyId,
+    p_limit: FAMILY_MEDIA_PAGE_SIZE,
+    p_before_created_at: cursor?.createdAt ?? null,
+    p_before_id: cursor?.id ?? null,
+  });
+
+  if (error) {
+    throw mediaSetupError(error, 'Family media could not be loaded. Check your connection and try again.');
+  }
+
+  const rows = (data ?? []) as Omit<FamilyMediaItem, 'signed_url'>[];
+  const items = await signMediaRows(rows);
+  return {
+    items,
+    hasMore: rows.length === FAMILY_MEDIA_PAGE_SIZE,
+    cursor: rows.length > 0
+      ? { createdAt: rows[rows.length - 1].created_at, id: rows[rows.length - 1].id }
+      : cursor,
+  };
+}
+
+export async function listFamilyMedia(familyId: string): Promise<FamilyMediaItem[]> {
+  return (await listFamilyMediaPage(familyId)).items;
 }
 
 export async function getFamilyMediaSignedUrl(storageKey: string) {

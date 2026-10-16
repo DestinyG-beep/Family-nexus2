@@ -7,7 +7,7 @@ import { useAuth } from '../src/context/AuthContext';
 export default function AppEntry() {
   const { session, isLoading } = useAuth();
   const { next } = useLocalSearchParams<{ next?: string }>();
-  const nextPath = typeof next === 'string' && /^\/join\/[a-f0-9]{64}$/.test(next) ? next : undefined;
+  const nextPath = typeof next === 'string' && /^\/join\/[a-f0-9]{64}$/i.test(next) ? next : undefined;
 
   if (isLoading) {
     return (

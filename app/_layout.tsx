@@ -8,6 +8,7 @@ import { supabase } from '../src/lib/supabase';
 
 function AuthRedirectHandler() {
   const url = Linking.useLinkingURL();
+  const router = useRouter();
 
   useEffect(() => {
     if (Platform.OS === 'web' || !url || !supabase) return;
@@ -23,7 +24,10 @@ function AuthRedirectHandler() {
           console.warn('Auth redirect could not be completed', {
             code: error.code,
           });
+          return;
         }
+        const next = queryParams?.next;
+        if (typeof next === 'string' && /^\/join\/[a-f0-9]{64}$/i.test(next)) router.replace(next as never);
       });
       return;
     }
@@ -45,7 +49,7 @@ function AuthRedirectHandler() {
           }
         });
     }
-  }, [url]);
+  }, [router, url]);
 
   return null;
 }

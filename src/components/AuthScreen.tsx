@@ -16,7 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { AUTH_BACKGROUND_IMAGE_URL } from '../config/branding';
 
 export default function AuthScreen({ nextPath }: { nextPath?: string }) {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signInWithGoogle, signUp } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -67,6 +67,19 @@ export default function AuthScreen({ nextPath }: { nextPath?: string }) {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    if (loading) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await signInWithGoogle(nextPath);
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message.toLowerCase() : '';
+      setMessage(messageText.includes('cancel') ? 'Google sign-in was cancelled.' : 'Google sign-in could not be started. Check your provider configuration and try again.');
+      setLoading(false);
+    }
+  };
+
   const content = <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
         <View style={styles.mark}><Text style={styles.markText}>FN</Text></View>
@@ -105,6 +118,11 @@ export default function AuthScreen({ nextPath }: { nextPath?: string }) {
 
         <Pressable style={styles.primaryButton} onPress={handleSubmit} disabled={loading}>
           {loading ? <ActivityIndicator color="#fffaf3" /> : <Text style={styles.primaryButtonText}>{mode === 'login' ? 'Login' : 'Create account'}</Text>}
+        </Pressable>
+
+        <View style={styles.divider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>or</Text><View style={styles.dividerLine} /></View>
+        <Pressable style={styles.googleButton} onPress={() => void handleGoogleSignIn()} disabled={loading}>
+          {loading ? <ActivityIndicator color="#2f2925" /> : <Text style={styles.googleButtonText}>Continue with Google</Text>}
         </Pressable>
 
         {message ? <Text accessibilityRole="alert" style={styles.message}>{message}</Text> : null}
@@ -191,6 +209,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#e7d9ca' },
+  dividerText: { color: '#8792a1', fontSize: 13 },
+  googleButton: { minHeight: 48, borderWidth: 1, borderColor: '#d6c9bc', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  googleButtonText: { color: '#2f2925', fontSize: 15, fontWeight: '700' },
   mark: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#a8503b', marginBottom: 18 },
   markText: { color: '#fffaf3', fontSize: 15, fontWeight: '900', letterSpacing: 1 },
 });

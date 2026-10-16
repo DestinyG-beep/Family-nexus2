@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 
 import MediaDetailModal from '../../src/components/MediaDetailModal';
+import MediaGalleryScreen from '../../src/components/MediaGalleryScreen';
 import { useAuth } from '../../src/context/AuthContext';
 import { ActiveFamilyMembership, getActiveFamilyMemberships } from '../../src/lib/familyService';
 import {
@@ -100,7 +101,7 @@ function downloadFileName(item: FamilyMediaItem) {
   return `family-${item.media_type.toLowerCase()}-${item.id}.${fallbackExtension}`;
 }
 
-export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
+export function LegacyMediaScreen({ familyIdOverride }: MediaScreenProps) {
   const router = useRouter();
   const { session } = useAuth();
   const { colors } = useAppTheme();
@@ -646,6 +647,10 @@ export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
       />
     </ScrollView>
   );
+}
+
+export function MediaScreen({ familyIdOverride }: MediaScreenProps) {
+  return <MediaGalleryScreen familyIdOverride={familyIdOverride} />;
 }
 
 export default MediaScreen;

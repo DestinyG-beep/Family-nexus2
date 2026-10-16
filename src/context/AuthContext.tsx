@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Appearance, Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 
 import { hasSupabaseConfig, requireSupabase, supabase } from '../lib/supabase';
 
@@ -34,6 +35,7 @@ type AuthContextValue = {
   themePreference: ThemePreference;
   setThemePreference: (preference: ThemePreference) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: (nextPath?: string) => Promise<void>;
   signUp: (name: string, email: string, password: string, emailRedirectTo?: string) => Promise<'signed-in' | 'confirmation-required'>;
   updateProfile: (input: {
     name?: string;
@@ -184,6 +186,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(nextProfile);
   };
 
+  const signInWithGoogle = async (nextPath?: string) => {
+    const client = requireSupabase();
+    const redirectTo = Platform.OS === 'web' && typeof window !== 'undefined'
+      ? `${window.location.origin}${nextPath ? `/?next=${encodeURIComponent(nextPath)}` : '/'}`
+      : Linking.createURL('', nextPath ? { queryParams: { next: nextPath } } : undefined);
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        skipBrowserRedirect: Platform.OS !== 'web',
+      },
+    });
+
+    if (error) throw error;
+    if (Platform.OS !== 'web' && data.url) {
+      await Linking.openURL(data.url);
+    }
+  };
+
   const signUp = async (name: string, email: string, password: string, emailRedirectTo?: string) => {
     const client = requireSupabase();
     const { data, error } = await client.auth.signUp({
@@ -299,6 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       themePreference,
       setThemePreference,
       signIn,
+      signInWithGoogle,
       signUp,
       updateProfile,
       signOut,
